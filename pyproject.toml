@@ -1,0 +1,52 @@
+[project]
+name = "py-pomo"
+version = "0.1.0"
+description = "Cross-platform i18n library with .po/.mo parser and gettext-compatible API."
+authors = [{ name = "Kiminori Kato", email = "kimikato@morgenrot.in" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = ["i18n", "gettext", "po", "mo", "internationalization"]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["mypy", "black", "flake8", "pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pypomo"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+# ------------------------------
+# 実用性重視で抑えたい警告（必要なものだけ緩和）
+# ------------------------------
+
+# 外部ライブラリの型情報が無い場合に noisy にならないように
+ignore_missing_imports = true
+
+# TypedDict / Protocol 多めのプロジェクトのため緩める
+warn_unused_ignores = false
+
+# pydantic や __getattr__ を使う構造への軽い緩和
+disable_error_code = [
+    "attr-defined",
+]
+
+# ------------------------------
+# レポートの粒度調整
+# ------------------------------
+show_error_codes = true
+pretty = true
+warn_return_any = true
+warn_unreachable = true
+

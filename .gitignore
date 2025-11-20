@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# virtualenv
+.venv/
+env/
+venv/
+
+# VSCode
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# MyPy cache
+.mypy_cache/
+
+# pytest
+.pytest_cache/
+
+# build
+dist/
+build/
+*.egg-info/
+
+# Mac
+.DS_Store
+
