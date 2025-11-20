@@ -43,6 +43,7 @@ class Catalog:
         self.domain = domain
         self.localedir = localedir
         self.languages = list(languages) if languages is not None else None
+
         self._messages: Dict[str, Message] = {}
 
         # plural forms evaluator
@@ -56,21 +57,16 @@ class Catalog:
         """Register plural rule from gettext header."""
         self.nplurals = nplurals
 
-        expr = expression.strip()
-
-        # Convert gettext-like syntax to Python
-        expr = expr.replace("&&", " and ").replace("||", " or ")
-
-        # Replace unary '!' (not followed by '=') with 'not '
-        # e.g. "!(n == 1)" → "not (n == 1)"
-        def repl_not(m: re.Match[str]) -> str:
-            return " not " + m.group(1)
-
-        expr = re.sub(r"!\s*([^=])", repl_not, expr)
+        # gettext -> Python expression
+        expr = (
+            expression.replace("&&", " and ")
+            .replace("||", " or ")
+            .replace("!", " not ")
+        )
 
         # minimal ternary operator conversion: cond ? a : b
         if "?" in expr and ":" in expr:
-            expr = self._convert_ternary(expr)
+            expr = self.convert_ternary(expr)
 
         # compile into safe eval object
         code = compile(expr, "<plural-form>", "eval")
@@ -80,8 +76,9 @@ class Catalog:
 
         self.plural_eval = plural_func
 
-    def _convert_ternary(self, s: str) -> str:
-        """Convert C-style ternary operator to Python's `a if cond else b`.
+    def convert_ternary(self, s: str) -> str:
+        """
+        Convert C-style ternary operator to Python's `a if cond else b`.
 
         This is simplified but covers all known gettext plural rules.
         pattern:  cond ? val1 : val2
@@ -119,22 +116,27 @@ class Catalog:
         if message is None:
             return singular if n == 1 else plural
 
-        # plural evaluator
-        if self.plural_eval is None:
-            index = 0 if n == 1 else 1
+        # plural index
+        if self.nplurals == 1:
+            index = 0
         else:
-            index = self.plural_eval(n)
-            if index < 0 or index >= self.nplurals:
-                index = 0  # Safe fallback
+            # usually, plural evaluator
+            if self.plural_eval is None:
+                index = 0 if n == 1 else 1
+            else:
+                index = self.plural_eval(n)
+                if index < 0 or index >= self.nplurals:
+                    index = 0
 
-        # lookup translation if exists
+        # gettext-compatible plural lookup
+        # 1. Returns the translation if it exists
         if index in message.translations:
             return message.translations[index]
 
-        # fallback
-        if index == 0:
-            return message.singular
-        return message.plural or plural
+        # 2. fallback (if translation not exists)
+        #   index = 0 -> singular
+        #   index > 0 -> plural (msgid_plural or English plural)
+        return message.singular if index == 0 else (message.plural or plural)
 
     # ------------------------------
     # Mutation helpers
@@ -153,12 +155,13 @@ class Catalog:
         """Create a Catalog from a list of parsed POEntry objects."""
         catalog = cls()
 
-        # Detect PO header
+        # Header detection
         if entries and entries[0].msgid == "":
             header = entries[0].msgstr
             nplurals, expr = cls._extract_plural_forms_from_header(header)
             catalog.set_plural_forms(nplurals, expr)
 
+        # Normal entries
         for entry in entries:
             if entry.msgid == "":
                 continue  # header
