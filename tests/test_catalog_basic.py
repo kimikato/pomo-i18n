@@ -3,6 +3,7 @@
 from pypomo.catalog import Catalog
 from pypomo.parser.types import POEntry
 
+
 def test_catalog_gettext():
     entries = [
         POEntry(
@@ -21,8 +22,7 @@ def test_catalog_gettext():
         ),
     ]
 
-    catalog = Catalog.from_po_entries(entries)
+    catalog = Catalog._from_po_entries(entries)
 
     assert catalog.gettext("Hello") == "こんにちは"
     assert catalog.gettext("Unknown") == "Unknown"
-

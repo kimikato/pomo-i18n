@@ -3,6 +3,7 @@
 from pypomo.catalog import Catalog
 from pypomo.parser.types import POEntry
 
+
 # ------------------------------------
 # Japanese: nplurals=1; plural=0;
 # ------------------------------------
@@ -24,7 +25,7 @@ def test_plural_forms_japanese():
         ),
     ]
 
-    cat = Catalog.from_po_entries(entries)
+    cat = Catalog._from_po_entries(entries)
 
     assert cat.ngettext("apple", "apples", 1) == "りんご"
     assert cat.ngettext("apple", "apples", 5) == "りんご"
@@ -51,8 +52,7 @@ def test_plural_forms_english():
         ),
     ]
 
-    cat = Catalog.from_po_entries(entries)
+    cat = Catalog._from_po_entries(entries)
 
     assert cat.ngettext("apple", "apples", 1) == "apple"
     assert cat.ngettext("apple", "apples", 5) == "apples"
-

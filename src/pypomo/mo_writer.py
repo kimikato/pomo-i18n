@@ -58,7 +58,7 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
     # ----------------------------------------
     # Normal messages
     # ----------------------------------------
-    for msg in catalog._messages.values():
+    for msg in catalog._iter_messages():
         # No plural -> simple key/value
         if msg.plural is None or not msg.translations:
             msgid = msg.msgid
