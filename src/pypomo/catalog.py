@@ -58,11 +58,14 @@ class Catalog:
         self.nplurals = nplurals
 
         # gettext -> Python expression
-        expr = (
-            expression.replace("&&", " and ")
-            .replace("||", " or ")
-            .replace("!", " not ")
-        )
+        expr = expression
+
+        # Replace logical AND/OR
+        expr = expr.replace("&&", " and ")
+        expr = expr.replace("||", " or ")
+
+        # Replace standalone '!' (but not '!=')
+        expr = re.sub(r"!(?!=)", " not ", expr)
 
         # minimal ternary operator conversion: cond ? a : b
         if "?" in expr and ":" in expr:
