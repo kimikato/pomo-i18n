@@ -4,8 +4,8 @@ import gettext
 from pathlib import Path
 
 from pypomo.catalog import Catalog
-from pypomo.parser.types import POEntry
 from pypomo.mo_writer import write_mo
+from pypomo.parser.types import POEntry
 
 
 def test_write_and_read_mo(tmp_path):
@@ -34,7 +34,7 @@ def test_write_and_read_mo(tmp_path):
         ),
     ]
 
-    cat = Catalog.from_po_entries(entries)
+    cat = Catalog._from_po_entries(entries)
 
     mo_path = tmp_path / "messages.mo"
     write_mo(mo_path, cat)
@@ -46,4 +46,3 @@ def test_write_and_read_mo(tmp_path):
     assert trans.gettext("Hello") == "こんにちは"
     assert trans.ngettext("apple", "apples", 1) == "りんご"
     assert trans.ngettext("apple", "apples", 5) == "りんご"
-

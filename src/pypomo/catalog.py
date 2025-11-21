@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import ValuesView
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Mapping, Tuple
 
@@ -44,11 +45,25 @@ class Catalog:
         self.localedir = localedir
         self.languages = list(languages) if languages is not None else None
 
-        self._messages: Dict[str, Message] = {}
+        self.__messages: Dict[str, Message] = {}
 
         # plural forms evaluator
         self.plural_eval: PluralEval | None = None
         self.nplurals: int = 2  # default: English-like
+
+    # ----------------------------------------
+    # Private getters for internal state (Step 2 additions)
+    # ----------------------------------------
+    def _iter_messages(self) -> ValuesView[Message]:
+        """Internal-only: iterate over stored Message objects."""
+        return self.__messages.values()
+
+    def _iter_messages_map(self) -> Dict[str, Message]:
+        """
+        Internal-only: return a shallow copy of the message map.
+        Used by translation() and mo_writer.
+        """
+        return self.__messages.copy()
 
     # ----------------------------------------
     # Header: Parse plural-forms
@@ -98,11 +113,15 @@ class Catalog:
 
         return f"({val1} if {cond} else {val2})"
 
+    def _bulk_update(self, messages: Mapping[str, Message]) -> None:
+        """Internal-only: merge many Message objects at once."""
+        self.__messages.update(messages)
+
     # ----------------------------------------
     # Lookup API
     # ----------------------------------------
     def gettext(self, msgid: str) -> str:
-        message = self._messages.get(msgid)
+        message = self.__messages.get(msgid)
         if message is None:
             return msgid
 
@@ -114,7 +133,7 @@ class Catalog:
         return message.translations.get(0, message.singular)
 
     def ngettext(self, singular: str, plural: str, n: int) -> str:
-        message = self._messages.get(singular)
+        message = self.__messages.get(singular)
 
         if message is None:
             return singular if n == 1 else plural
@@ -145,17 +164,14 @@ class Catalog:
     # Mutation helpers
     # ----------------------------------------
     def add_message(self, message: Message) -> None:
-        self._messages[message.msgid] = message
-
-    def bulk_update(self, messages: Mapping[str, Message]) -> None:
-        self._messages.update(messages)
+        self.__messages[message.msgid] = message
 
     # ----------------------------------------
     # Construction helpers
     # ----------------------------------------
     @classmethod
-    def from_po_entries(cls, entries: List[POEntry]) -> Catalog:
-        """Create a Catalog from a list of parsed POEntry objects."""
+    def _from_po_entries(cls, entries: List[POEntry]) -> Catalog:
+        """Internal-only: Create a Catalog from a list of parsed POEntry objects."""
         catalog = cls()
 
         # Header detection

@@ -96,10 +96,10 @@ def translation(
             continue
 
         entries = parser.parse(po_path)
-        part = Catalog.from_po_entries(entries)
+        part = Catalog._from_po_entries(entries)
 
         # Merge into main catalog
-        catalog.bulk_update(part._messages)
+        catalog._bulk_update(part._iter_messages_map())
 
         # Apply plural rules
         if part.plural_eval is not None:
