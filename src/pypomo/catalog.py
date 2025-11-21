@@ -53,7 +53,7 @@ class Catalog:
     # ----------------------------------------
     # Header: Parse plural-forms
     # ----------------------------------------
-    def set_plural_forms(self, nplurals: int, expression: str) -> None:
+    def _set_plural_forms(self, nplurals: int, expression: str) -> None:
         """Register plural rule from gettext header."""
         self.nplurals = nplurals
 
@@ -69,7 +69,7 @@ class Catalog:
 
         # minimal ternary operator conversion: cond ? a : b
         if "?" in expr and ":" in expr:
-            expr = self.convert_ternary(expr)
+            expr = self._convert_ternary(expr)
 
         # compile into safe eval object
         code = compile(expr, "<plural-form>", "eval")
@@ -79,7 +79,7 @@ class Catalog:
 
         self.plural_eval = plural_func
 
-    def convert_ternary(self, s: str) -> str:
+    def _convert_ternary(self, s: str) -> str:
         """
         Convert C-style ternary operator to Python's `a if cond else b`.
 
@@ -162,7 +162,7 @@ class Catalog:
         if entries and entries[0].msgid == "":
             header = entries[0].msgstr
             nplurals, expr = cls._extract_plural_forms_from_header(header)
-            catalog.set_plural_forms(nplurals, expr)
+            catalog._set_plural_forms(nplurals, expr)
 
         # Normal entries
         for entry in entries:
