@@ -50,9 +50,9 @@ class Catalog:
         self.plural_eval: PluralEval | None = None
         self.nplurals: int = 2  # default: English-like
 
-    # ------------------------------
+    # ----------------------------------------
     # Header: Parse plural-forms
-    # ------------------------------
+    # ----------------------------------------
     def set_plural_forms(self, nplurals: int, expression: str) -> None:
         """Register plural rule from gettext header."""
         self.nplurals = nplurals
@@ -95,9 +95,9 @@ class Catalog:
 
         return f"({val1} if {cond} else {val2})"
 
-    # ------------------------------
+    # ----------------------------------------
     # Lookup API
-    # ------------------------------
+    # ----------------------------------------
     def gettext(self, msgid: str) -> str:
         message = self._messages.get(msgid)
         if message is None:
@@ -138,18 +138,18 @@ class Catalog:
         #   index > 0 -> plural (msgid_plural or English plural)
         return message.singular if index == 0 else (message.plural or plural)
 
-    # ------------------------------
+    # ----------------------------------------
     # Mutation helpers
-    # ------------------------------
+    # ----------------------------------------
     def add_message(self, message: Message) -> None:
         self._messages[message.msgid] = message
 
     def bulk_update(self, messages: Mapping[str, Message]) -> None:
         self._messages.update(messages)
 
-    # ------------------------------
+    # ----------------------------------------
     # Construction helpers
-    # ------------------------------
+    # ----------------------------------------
     @classmethod
     def from_po_entries(cls, entries: List[POEntry]) -> Catalog:
         """Create a Catalog from a list of parsed POEntry objects."""
