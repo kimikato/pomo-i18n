@@ -44,7 +44,7 @@ class Catalog:
         self.localedir = localedir
         self.languages = list(languages) if languages is not None else None
 
-        self._messages: Dict[str, Message] = {}
+        self.__messages: Dict[str, Message] = {}
 
         # plural forms evaluator
         self.plural_eval: PluralEval | None = None
