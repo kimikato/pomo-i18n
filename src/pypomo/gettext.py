@@ -8,9 +8,9 @@ from typing import Iterable
 from .catalog import Catalog
 from .parser.po_parser import POParser
 
-# ------------------------------
+# ----------------------------------------
 # Default catalog (always updated by translation())
-# ------------------------------
+# ----------------------------------------
 _default_catalog: Catalog | None = None
 
 
@@ -27,9 +27,9 @@ def get_default_catalog() -> Catalog:
     return _default_catalog
 
 
-# ------------------------------
+# ----------------------------------------
 # Public gettext APIs
-# ------------------------------
+# ----------------------------------------
 def gettext(msgid: str) -> str:
     """
     Translate msgid using the default catalog.
@@ -66,10 +66,10 @@ def _(msgid: str, *, plural: str | None = None, n: int | None = None) -> str:
     return catalog.ngettext(msgid, plural, n)
 
 
-# ------------------------------
+# ----------------------------------------
 # translation() - like gettext.translation()
 # Loads PO files and sets the global catalog.
-# ------------------------------
+# ----------------------------------------
 def translation(
     domain: str, localedir: str, languages: list[str] | None = None
 ) -> Catalog:
