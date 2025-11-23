@@ -22,7 +22,7 @@ def test_catalog_gettext():
         ),
     ]
 
-    catalog = Catalog._from_po_entries(entries)
+    catalog = Catalog.from_po_entries(entries)
 
     assert catalog.gettext("Hello") == "こんにちは"
     assert catalog.gettext("Unknown") == "Unknown"

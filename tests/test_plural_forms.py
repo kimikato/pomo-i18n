@@ -25,7 +25,7 @@ def test_plural_forms_japanese():
         ),
     ]
 
-    cat = Catalog._from_po_entries(entries)
+    cat = Catalog.from_po_entries(entries)
 
     assert cat.ngettext("apple", "apples", 1) == "りんご"
     assert cat.ngettext("apple", "apples", 5) == "りんご"
@@ -52,7 +52,7 @@ def test_plural_forms_english():
         ),
     ]
 
-    cat = Catalog._from_po_entries(entries)
+    cat = Catalog.from_po_entries(entries)
 
     assert cat.ngettext("apple", "apples", 1) == "apple"
     assert cat.ngettext("apple", "apples", 5) == "apples"

@@ -170,8 +170,8 @@ class Catalog:
     # Construction helpers
     # ----------------------------------------
     @classmethod
-    def _from_po_entries(cls, entries: List[POEntry]) -> Catalog:
-        """Internal-only: Create a Catalog from a list of parsed POEntry objects."""
+    def from_po_entries(cls, entries: List[POEntry]) -> Catalog:
+        """Create a Catalog from a list of parsed POEntry objects."""
         catalog = cls()
 
         # Header detection

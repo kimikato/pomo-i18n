@@ -96,7 +96,7 @@ def translation(
             continue
 
         entries = parser.parse(po_path)
-        part = Catalog._from_po_entries(entries)
+        part = Catalog.from_po_entries(entries)
 
         # Merge into main catalog
         catalog._bulk_update(part._iter_messages_map())
