@@ -34,7 +34,7 @@ def test_write_and_read_mo(tmp_path):
         ),
     ]
 
-    cat = Catalog._from_po_entries(entries)
+    cat = Catalog.from_po_entries(entries)
 
     mo_path = tmp_path / "messages.mo"
     write_mo(mo_path, cat)
