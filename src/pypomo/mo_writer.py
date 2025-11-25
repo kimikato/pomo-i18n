@@ -75,7 +75,8 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
 
         # msgstr = join forms 0..nplurals-1
         forms: List[str] = []
-        for idx in range(catalog.nplurals):
+        nplurals: int = catalog.nplurals if catalog.nplurals is not None else 1
+        for idx in range(nplurals):
             if idx in msg.translations:
                 forms.append(msg.translations[idx])
             else:

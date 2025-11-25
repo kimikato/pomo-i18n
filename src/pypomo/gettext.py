@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
 
 from .catalog import Catalog
 from .parser.po_parser import POParser
@@ -99,12 +98,7 @@ def translation(
         part = Catalog.from_po_entries(entries)
 
         # Merge into main catalog
-        catalog._bulk_update(part._iter_messages_map())
-
-        # Apply plural rules
-        if part.plural_eval is not None:
-            catalog.plural_eval = part.plural_eval
-            catalog.nplurals = part.nplurals
+        catalog.merge(part)
 
     # update global catalog
     _default_catalog = catalog
