@@ -1,4 +1,5 @@
 # tests/test_mo_writer.py
+# type: ignore
 
 import gettext
 from pathlib import Path

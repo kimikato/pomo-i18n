@@ -1,4 +1,5 @@
 # tests/test_catalog_basic.py
+# type: ignore
 
 from pypomo.catalog import Catalog
 from pypomo.parser.types import POEntry

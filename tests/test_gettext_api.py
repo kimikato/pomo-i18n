@@ -1,7 +1,10 @@
 # tests/test_gettext_api.py
+# type: ignore
 
 from pathlib import Path
-from pypomo.gettext import translation, _
+
+from pypomo.gettext import _, translation
+
 
 def test_gettext_and_underscore(tmp_path):
     loc = tmp_path / "ja" / "LC_MESSAGES"
@@ -27,4 +30,3 @@ def test_gettext_and_underscore(tmp_path):
     assert _("Hello") == "こんにちは"
     assert _("apple", plural="apples", n=1) == "りんご"
     assert _("apple", plural="apples", n=5) == "りんご"
-

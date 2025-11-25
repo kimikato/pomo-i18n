@@ -1,4 +1,5 @@
 # tests/test_gettext_translation.py
+# type: ignore
 
 from __future__ import annotations
 

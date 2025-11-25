@@ -1,4 +1,5 @@
 # tests/test_po_parser_basic.py
+# type: ignore
 
 from __future__ import annotations
 

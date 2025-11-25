@@ -1,4 +1,5 @@
 # tests/test_plural_forms.py
+# type: ignore
 
 from pypomo.catalog import Catalog
 from pypomo.parser.types import POEntry

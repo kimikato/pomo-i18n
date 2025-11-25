@@ -1,4 +1,5 @@
 # tests/test_catalog_plural.py
+# type: ignore
 
 from __future__ import annotations
 
