@@ -31,3 +31,8 @@ locales/**/LC_MESSAGES/*.mo
 
 # Temp / scratch tests
 src/test*.py
+
+# coverage
+.coverage*
+coverage.xml
+htmlcov/
