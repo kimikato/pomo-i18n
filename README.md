@@ -3,7 +3,7 @@
 **English** | [日本語](README.ja.md)
 
 A minimal, strict-typed internationalization library for Python
-supporting `.po` parsing, gettext-compatible APIs, and plural-form evaluation.
+supporting `.po` parsing, gettext-compatible APIs, and a safe, restricted plural-form evaluation.
 
 `py-pomo` is designed to be lightweight, dependency-free, and suitable for
 embedding into applications such as CLI tools, FastAPI backends, or local utilities.
@@ -13,7 +13,7 @@ embedding into applications such as CLI tools, FastAPI backends, or local utilit
 ## Features
 
 - ✔ Load and parse `.po` files (gettext format)
-- ✔ Full plural-forms support (`Plural-Forms:` header)
+- ✔ Full plural forms support (`Plural-Forms:` header)
 - ✔ Strict type checking (mypy / Pylance friendly)
 - ✔ Simple, Pythonic API: `gettext()`, `ngettext()`, and `translation()`
 - ✔ No system dependencies (no libintl)
@@ -47,6 +47,7 @@ t = translation(
     languages=["en"],
 )
 
+# Shortcut
 _ = t.gettext
 
 print(_("Hello"))           # -> "Hello" (from .po)
@@ -142,6 +143,75 @@ from pypomo.gettext import gettext, ngettext, translation
 - `gettext(msgid)` -> default catalog lookup
 - `ngettext(singular, plural, n)` -> plural-aware lookup
 - `translation(domain, localedir, languages)` -> load PO files into a new Catalog
+
+---
+
+## Benchmarks
+
+Two benchmark suites exist:
+
+### 1. Micro benchmark (timeit)
+
+```sh
+make bench
+```
+
+### 2. pytest-benchmark
+
+```sh
+make bench-pytest
+```
+
+### 🏎 Plural Rule Evaluation Benchmark
+
+This library includes optimized plural-rule parsing and evaluation.
+The performance is important because plural selection is a hot path in gettext.
+
+#### Environment
+
+- Python 3.10
+- macOS Tahoe 26.1 (Apple Silicon, M4)
+- pytest-benchmark
+- pypomo default settings
+
+#### Backend Comparison
+
+| Backend  | Simple Rule (µs) | Complex Rule (µs) | Notes                                                   |
+| -------- | ---------------- | ----------------- | ------------------------------------------------------- |
+| **none** | ~2.54            | ~4.83             | No caching. Useful for debugging or comparison.         |
+| **weak** | ~2.69            | ~4.89             | Python `dict` cache. Slight overhead on lookup.         |
+| **lru**  | ~2.49            | ~4.92             | Fastest overall. Backed by CPython’s C-implemented LRU. |
+
+#### Summary
+
+- **`LRU` cache is the fastest** and recommended for production.
+- `weak` cache provides simple in-memory caching.
+- `none` is intended for debugging or controlled microbenchmarks.
+
+#### Selecting a Cache Backend
+
+You can select the caching backend via environment variables:
+
+```bash
+# Disable caching (debug mode)
+export PYPOMO_CACHE=none
+
+# Use weak dict-based cache
+export PYPOMO_CACHE=weak
+
+# Use LRU cache (recommended)
+export PYPOMO_CACHE=lru
+
+# Change LRU cache size (default: 256)
+export PYPOMO_PLURAL_CACHE_SIZE=512
+```
+
+You can also override the cache at runtime using:
+
+```python
+from pypomo.utils.cache_manager import get_default_cache
+cache = get_default_cache(backend="lru")
+```
 
 ---
 

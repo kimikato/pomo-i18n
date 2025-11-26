@@ -1,5 +1,5 @@
 [project]
-name = "py-pomo"
+name = "pypomo"
 version = "0.1.0"
 description = "Minimal strict-typed gettext-style i18n library."
 authors = [{ name = "Kiminori Kato" }]
@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "mypy", "pytest", "coverage"]
+dev = ["black", "flake8", "mypy", "pytest", "coverage", "pytest-benchmark"]
 
 [build-system]
 requires = ["hatchling"]
