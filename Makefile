@@ -17,6 +17,8 @@
 #   make coverage      # Run coverage (+ report)
 #   make coverage-html # Generate HTML coverage report
 #   make format        # Run black formatter
+#   make bench         # Run bench
+#   make bench-pytest  # Run pytest-benchmark
 #   make all           # Run lint + typecheck + test + coverage
 #   make clean         # Remove caches and build artifacts
 #
@@ -25,7 +27,7 @@
 #   - `make all` is ideal for pre-commit checking and CI
 # ============================================================
 
-.PHONY: init lint typecheck test coverage coverage-html format all clean
+.PHONY: init lint typecheck test coverage coverage-html format bench bench-pytesst all clean
 
 
 # ------------------------------------------------------------
@@ -85,6 +87,17 @@ coverage-html:
 format:
 	@echo ">>> Formatting code with Black..."
 	black src tests
+
+
+# ------------------------------------------------------------
+# Benchmark
+# ------------------------------------------------------------
+bench:
+	@echo ">>> Benchmark "
+	PYTHONPATH=src python bench/timeit_plural.py
+
+bench-pytest:
+	PYTHONPATH=src pytest --benchmark-only
 
 
 # ------------------------------------------------------------

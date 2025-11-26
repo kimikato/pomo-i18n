@@ -11,14 +11,14 @@
 ## 特長
 
 - ✔ `.po` ファイルをパース（gettext 形式）
-- ✔ `Plural-Forms:` を解析し、複雑な複数形ルールに対応
+- ✔ 複数形ルール（`Plural-Forms:`） を解析し、複雑な複数形ルールに対応
 - ✔ mypy / Pylance 完全対応（strict モード）
 - ✔ gettext 互換 API `gettext` / `ngettext` / `translation`
 - ✔ OS 依存なし（libintl 不要）
 - ✔ Linux / macOS / Windows で動作
 
-MSM（MangaSeitonMaid）や Kuraban backend といった
-Python 製プロジェクトへの組み込みを想定しています。
+CLI ツールや API サーバ、バッチ処理など
+Python プロジェクトへの組み込みを想定しています。
 
 ---
 
@@ -74,11 +74,11 @@ locales/
 - 複数形：`msgid_plural` / `msgstr[n]`
 - 複数行文字列
 - コメント（`#`, `#.`, `#:`, `#,` など）
-- ヘッダー（`msgid ""`）の解析 -> ここから `Plural-Forms:` を抽出
+- ヘッダー（`msgid ""`）の解析 -> ここから 複数形ルール（`Plural-Forms:`） を抽出
 
 ---
 
-## プロラルフォーム（複数形ルール）
+## 複数形ルール（Plural Forms）
 
 `.po` には次のような行が含まれます：
 
@@ -126,6 +126,76 @@ from pypomo.gettext import gettext, ngettext, translation
 | `gettext(msgid)`                            | デフォルトカタログでの翻訳                 |
 | `ngettext(singular, plural, n)`             | 複数形を考慮した翻訳                       |
 | `translation(domain, localedir, languages)` | 特定の .po を読み込んで新規 Catalog を返す |
+
+---
+
+## ベンチマーク
+
+2 種類のベンチマークがあります:
+
+### 1. Micro benchmark (timeit)
+
+```sh
+make bench
+```
+
+### 2. pytest-benchmark
+
+```sh
+make bench-pytest
+```
+
+### 🏎 複数形評価（Plural Expression） ベンチマーク
+
+複数形選択（plural rule evaluation）は gettext の内部処理で最も頻繁に実行されるため、
+キャッシュ方式によりパフォーマンスが大きく変わります。
+以下は実際のベンチマーク結果です。
+
+#### 計測環境
+
+- Python 3.10
+- macOS Tahoe 26.1 (Apple Silicon, M4)
+- pytest-benchmark
+- pypomo default settings
+
+#### キャッシュ方式ごとの比較結果
+
+| Backend  | Simple Rule (µs) | Complex Rule (µs) | コメント                              |
+| -------- | ---------------- | ----------------- | ------------------------------------- |
+| **none** | 約 2.54          | 約 4.83           | キャッシュなし。デバッグ向け。        |
+| **weak** | 約 2.69          | 約 4.89           | Python の dict による簡易キャッシュ。 |
+| **lru**  | 約 2.49          | 約 4.92           | もっとも高速（CPython の LRU 実装）。 |
+
+#### まとめ
+
+- 本番利用では **`LRU` キャッシュを推奨**
+- `weak` は軽量キャッシュとして扱いやすい
+- `none` は比較実験やデバッグ用途に最適
+
+#### キャッシュ方式の切り替え方法
+
+環境変数でキャッシュ backend を切り替えできます：
+
+```bash
+# キャッシュ無効化（デバッグ向け）
+export PYPOMO_CACHE=none
+
+# dict ベースの簡易キャッシュ
+export PYPOMO_CACHE=weak
+
+# LRU キャッシュ（推奨）
+export PYPOMO_CACHE=lru
+
+# LRU サイズ変更（デフォルト: 256）
+export PYPOMO_PLURAL_CACHE_SIZE=512
+```
+
+プログラム中で切り替えることも可能です：
+
+```python
+from pypomo.utils.cache_manager import get_default_cache
+cache = get_default_cache(backend="lru")
+```
 
 ---
 

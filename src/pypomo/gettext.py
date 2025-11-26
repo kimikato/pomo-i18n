@@ -70,7 +70,9 @@ def _(msgid: str, *, plural: str | None = None, n: int | None = None) -> str:
 # Loads PO files and sets the global catalog.
 # ----------------------------------------
 def translation(
-    domain: str, localedir: str, languages: list[str] | None = None
+    domain: str,
+    localedir: str,
+    languages: list[str] | None = None,
 ) -> Catalog:
     """
     Load translations from .po files for the selected domain/languages.
