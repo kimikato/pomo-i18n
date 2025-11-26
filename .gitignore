@@ -36,3 +36,4 @@ src/test*.py
 .coverage*
 coverage.xml
 htmlcov/
+.coverage
