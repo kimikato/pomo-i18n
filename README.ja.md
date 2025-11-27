@@ -129,6 +129,65 @@ from pypomo.gettext import gettext, ngettext, translation
 
 ---
 
+## `.mo` ファイルの書き出し
+
+`py-pomo` には GNU gettext 互換の `.mo` バイナリを書き出すための `write_mo()` 関数が含まれています。
+`Catalog` インスタンスを `.mo` ファイルに変換できます。
+
+### 例：Catalog を `.mo` ファイルとして出力する
+
+```python
+from pypomo.catalog import Catalog
+from pypomo.mo_writer import write_mo
+from pypomo.parser.types import POEntry
+
+entries = [
+    POEntry(
+        msgid="",
+        msgstr=(
+            "Language: ja\n"
+            "Content-Type: text/plain; charset=UTF-8\n"
+            "Plural-Forms: nplurals=1; plural=0;\n"
+        ),
+        msgid_plural=None,
+        msgstr_plural={},
+        comments=[],
+    ),
+    POEntry(
+        msgid="Hello",
+        msgstr="こんにちは",
+        msgid_plural=None,
+        msgstr_plural={},
+        comments=[],
+    ),
+]
+
+catalog = Catalog.from_po_entries(entries)
+write_mo("messages.mo", catalog)
+```
+
+### 出力した `.mo` の利用方法
+
+Python の標準 `gettext` でロードできます：
+
+```python
+import gettext
+
+with open("messages.mo", "rb") as f:
+    trans = gettext.GNUTranslations(f)
+
+print(trans.gettext("Hello"))  # -> 「こんにちは」
+```
+
+### 特長
+
+- GNU gettext の `.mo` フォーマットと互換
+- msgid="" がない場合でも自動でヘッダーを生成
+- 複数形（nplurals / 複数形判定式）に対応
+- 出力は UTF-8、追加依存なし
+
+---
+
 ## ベンチマーク
 
 2 種類のベンチマークがあります:

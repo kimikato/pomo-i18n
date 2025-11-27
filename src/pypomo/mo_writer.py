@@ -25,40 +25,54 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
     # ----------------------------------------
     # Header entry ("") must contain metadata
     # ----------------------------------------
+    # Use catalog.header_msgstr() if available (raw PO header)
+    # Otherwise build a minimal fallback header.
     header_lines: List[str] = []
 
-    # Fixed GNU gettext headers
-    header_lines.append("Project-Id-Version: py-pomo 1.0\n")
-    header_lines.append("MIME-Version: 1.0\n")
+    header: str = catalog.header_msgstr()  # always a str
+    if not header:
+        # No header found — create a minimal valid gettext header
+        header_lines = [
+            "Project-Id-Version: py-pomo 1.0\n",
+            "MIME-Version: 1.0\n",
+            "Content-Type: text/plain; charset=UTF-8\n",
+            "Content-Transfer-Encoding: 8bit\n",
+        ]
 
-    # UTF-8 is assumed
-    header_lines.append("Content-Transfer-Encoding: 8bit\n")
-    header_lines.append("Content-Type: text/plain; charset=UTF-8\n")
+        # Language (if known)
+        if catalog.languages:
+            header_lines.append(f"Language: {catalog.languages[0]}\n")
 
-    # Dynamic headers
-    # Language (if known)
-    if catalog.languages:
-        header_lines.append(f"Language: {catalog.languages[0]}\n")
+        # Plural-Forms fallback
+        npl = catalog.nplurals if catalog.nplurals is not None else 2
+        if npl == 1:
+            plural_expr = "0"
+        elif npl == 2:
+            plural_expr = "(n != 1)"
+        else:
+            # fallback for languages with 3+ plural forms
+            plural_expr = "(n != 1)"  # safe-ish default
 
-    # Plural-Forms (simplified)
-    if catalog.nplurals == 1:
-        plural_expr = "0"
-    elif catalog.nplurals == 2:
-        plural_expr = "n != 1"
-    else:
-        # Fallback for uncommon plural forms
-        plural_expr = "(n != 1)"
+        header_lines.append(
+            f"Plural-Forms: nplurals={npl}; plural={plural_expr};\n"
+        )
 
-    header_lines.append(
-        f"Plural-Forms: nplurals={catalog.nplurals}; plural={plural_expr};\n"
-    )
+        if "Content-Type" not in header:
+            header += "Content-Type: text/plain; charset=UTF-8\n"
 
-    result[""] = "".join(header_lines)
+        header = "".join(header_lines)
+
+    result[""] = header
 
     # ----------------------------------------
     # Normal messages
     # ----------------------------------------
     for msg in catalog._iter_messages():
+
+        # Skip header entry (msgid="")
+        if msg.msgid == "":
+            continue
+
         # No plural -> simple key/value
         if msg.plural is None or not msg.translations:
             msgid = msg.msgid
@@ -74,8 +88,9 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
         msgid = singular + "\x00" + plural
 
         # msgstr = join forms 0..nplurals-1
-        forms: List[str] = []
         nplurals: int = catalog.nplurals if catalog.nplurals is not None else 1
+
+        forms: List[str] = []
         for idx in range(nplurals):
             if idx in msg.translations:
                 forms.append(msg.translations[idx])

@@ -55,6 +55,9 @@ class Catalog:
         # Keep nplurals for compatibility with tests / mo_writer
         self.nplurals: int | None = None
 
+        # header
+        self._header_raw: str = ""
+
     # ----------------------------------------
     # Private getters for internal state (Step 2 additions)
     # ----------------------------------------
@@ -165,16 +168,16 @@ class Catalog:
         """
         catalog = cls()
 
-        # First, handle header (msgid == "") to load plural forms
-        for entry in entries:
-            if entry.msgid == "":
-                catalog._load_header(entry.msgstr)
-
         # messages
         for entry in entries:
-            if entry.msgid == "":
-                continue  # header
 
+            # header
+            if entry.msgid == "":
+                catalog._header_raw = entry.msgstr
+                catalog._load_header(entry.msgstr)
+                continue
+
+            # normal entry
             # singular msgstr or fallback to msgid
             singular = entry.msgstr if entry.msgstr else entry.msgid
 
@@ -188,3 +191,6 @@ class Catalog:
             catalog.add_message(msg)
 
         return catalog
+
+    def header_msgstr(self) -> str:
+        return self._header_raw or ""

@@ -146,6 +146,65 @@ from pypomo.gettext import gettext, ngettext, translation
 
 ---
 
+## Writing `.mo` Files
+
+`py-pomo` includes a small `.mo` writer compatible with GNU gettext.
+You can generate `.mo` files from a `Catalog` instance.
+
+### Example: Compile a Catalog into a `.mo` file
+
+```python
+from pypomo.catalog import Catalog
+from pypomo.mo_writer import write_mo
+from pypomo.parser.types import POEntry
+
+entries = [
+    POEntry(
+        msgid="",
+        msgstr=(
+            "Language: en\n"
+            "Content-Type: text/plain; charset=UTF-8\n"
+            "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+        ),
+        msgid_plural=None,
+        msgstr_plural={},
+        comments=[],
+    ),
+    POEntry(
+        msgid="Hello",
+        msgstr="Hello!",
+        msgid_plural=None,
+        msgstr_plural={},
+        comments=[],
+    ),
+]
+
+catalog = Catalog.from_po_entries(entries)
+write_mo("messages.mo", catalog)
+```
+
+### Using the generated `.mo` file
+
+The `.mo` file produced by `py-pomo` can be loaded using Python’s built-in `gettext`:
+
+```python
+import gettext
+
+with open("messages.mo", "rb") as f:
+    trans = gettext.GNUTranslations(f)
+
+print(trans.gettext("Hello"))  # -> "Hello!"
+```
+
+### Features
+
+- Fully compatible with GNU `.mo` binary format
+- Automatic fallback header generation (for PO files missing msgid="")
+- Supports plural forms (`nplurals`, plural expressions)
+- UTF-8 output, no system dependencies
+
+---
+
 ## Benchmarks
 
 Two benchmark suites exist:
