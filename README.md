@@ -2,6 +2,10 @@
 
 **English** | [日本語](README.ja.md)
 
+[![Tests](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml)
+[![PyPI version](https://img.shields.io/pypi/v/py-pomo.svg)](https://pypi.org/project/py-pomo/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A minimal, strict-typed internationalization library for Python
 supporting `.po` parsing, gettext-compatible APIs, and a safe, restricted plural-form evaluation.
 
@@ -12,7 +16,7 @@ embedding into applications such as CLI tools, FastAPI backends, or local utilit
 
 ## Features
 
-- ✔ Load and parse `.po` files (gettext format)
+- ✔ Load and parse `.po` and `.mo` files (gettext format)
 - ✔ Full plural forms support (`Plural-Forms:` header)
 - ✔ Strict type checking (mypy / Pylance friendly)
 - ✔ Simple, Pythonic API: `gettext()`, `ngettext()`, and `translation()`
@@ -202,6 +206,66 @@ print(trans.gettext("Hello"))  # -> "Hello!"
 - Automatic fallback header generation (for PO files missing msgid="")
 - Supports plural forms (`nplurals`, plural expressions)
 - UTF-8 output, no system dependencies
+
+---
+
+## Loading `.mo` Files
+
+`py-pomo` includes a simple and strict `.mo` loader that can read
+GNU gettext binary files and convert them into a `Catalog`.
+
+### Example: Load a `.mo` file into a Catalog
+
+```python
+from pypomo.mo.loader import load_mo
+
+cat = load_mo("messages.mo")
+
+_ = cat.gettext
+
+print(_("Hello"))       # -> "Hello" (loaded from .mo)
+print(cat.ngettext("apple", "apples", 3))
+```
+
+### Supported Features
+
+- Fully compatible with GNU `.mo` binary format
+- Little-endian header validation (0x9504120E)
+- Automatic parsing of the gettext header (`msgid ""`)
+- Plural-Forms extraction and plural-rule evaluation
+- Correct handling of:
+  - singular messages
+  - plural messages (`msgid "\x00"` separator)
+  - multiple plural forms (`msgstr[n]` → split at `\x00`)
+
+### How it works
+
+1. `read_mo_binary()`
+
+   Reads the binary header and string tables and extracts raw `msgid` / `msgstr` byte arrays.
+
+2. `decode_map_pairs()`
+
+   Converts the byte arrays into structured Python objects:
+
+   - `"single"` entries
+   - `"plural-header"` entries
+
+3. `build_catalog_from_pairs()`
+
+   Builds a full `Catalog`, including plural forms from the header.
+
+### When to use `.mo` loading?
+
+Use `.mo` files when:
+
+- You want faster loading time (binary format is much faster than .po parsing)
+- Deploying translations in production environments
+- Loading translations produced by gettext or msgfmt
+
+If you prefer editable sources, you can continue using `.po` files via `Catalog.from_po_entries()`.
+
+`.mo` loading is completely optional in `py-pomo`.
 
 ---
 

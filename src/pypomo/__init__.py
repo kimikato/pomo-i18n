@@ -18,7 +18,6 @@ Advanced API:
 
 from .catalog import Catalog
 from .gettext import _, get_default_catalog, gettext, ngettext, translation
-from .mo_writer import write_mo
 
 __all__ = [
     # gettext-style API
@@ -29,5 +28,4 @@ __all__ = [
     "get_default_catalog",
     # advanced / power-user API
     "Catalog",
-    "write_mo",
 ]

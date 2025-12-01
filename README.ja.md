@@ -2,6 +2,10 @@
 
 [English](README.md) | **日本語**
 
+[![Tests](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml)
+[![PyPI version](https://img.shields.io/pypi/v/py-pomo.svg)](https://pypi.org/project/py-pomo/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 `py-pomo` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。
 
 `.po` ファイルを自前でパースし、外部依存なしで `gettext()` / `ngettext()` を使用できるようにします。
@@ -10,7 +14,7 @@
 
 ## 特長
 
-- ✔ `.po` ファイルをパース（gettext 形式）
+- ✔ `.po` ファイル、 `.mo` ファイルをパース（gettext 形式）
 - ✔ 複数形ルール（`Plural-Forms:`） を解析し、複雑な複数形ルールに対応
 - ✔ mypy / Pylance 完全対応（strict モード）
 - ✔ gettext 互換 API `gettext` / `ngettext` / `translation`
@@ -188,6 +192,70 @@ print(trans.gettext("Hello"))  # -> 「こんにちは」
 
 ---
 
+## `.mo` ファイルの読み込み
+
+`py-pomo` には GNU gettext 互換の `.mo` バイナリファイルを `Catalog` に読み込むためのローダーが付属しています。
+
+### 例：`.mo` ファイルを `Catalog` として読み込む
+
+```python
+from pypomo.mo.loader import load_mo
+
+cat = load_mo("messages.mo")
+
+_ = cat.gettext
+
+print(_("Hello"))       # -> 「こんにちは」など
+print(cat.ngettext("apple", "apples", 3))
+```
+
+### 対応している内容
+
+- GNU gettext `.mo` バイナリ形式と互換
+- リトルエンディアンのマジックナンバー (0x9504120E) を検証
+- `msgid ""` からヘッダー情報（`Plural-Forms:` など）を解析
+- 複数形ルール（plural expression）の適切な処理
+- 以下のすべてを正しく読み込めます：
+  - 単数メッセージ
+  - 複数メッセージ（`msgid "\x00"` で区切る）
+  - 複数形の各フォーム（`msgstr[n]` 相当）
+
+### 動作の流れ
+
+`.mo` ローダーは次のように動作します：
+
+1. `read_mo_binary()`
+
+   バイナリヘッダーと文字列テーブルを読み取り、生の `msgid` / `msgstr` のバイト列を抽出します。
+
+2. `decode_map_pairs()`
+
+   バイト列を Python の構造へ変換します：
+
+   - `"single"`（単数）
+   - `"plural-header"`（複数形）
+
+3. `build_catalog_from_pairs()`
+
+   ペアから完全な `Catalog` を構築し、必要に応じて `Plural-Forms:` も設定します。
+
+### `.mo` を使うべきタイミング
+
+`.mo` バイナリを使う利点は以下です：
+
+- `.po` より 読み込みが高速（バイナリのため）
+- 本番環境へのデプロイで安定性が高い
+- `gettext` や `msgfmt` が生成した `.mo` と完全互換
+
+### `.po` でも `.mo` でも自由に選べる
+
+- 編集しやすい： `.po`
+- 配布や読み込みが速い： `.mo`
+
+どちらも `py-pomo` は自然に扱えるので、プロジェクトにあわせて自由に選択できます。
+
+---
+
 ## ベンチマーク
 
 2 種類のベンチマークがあります:
@@ -260,7 +328,6 @@ cache = get_default_cache(backend="lru")
 
 ## 今後の予定
 
-- `.mo` バイナリファイルの読み込み
 - 複数言語のフォールバック対応
 - コメント（`#, fuzzy`、`#.` など）の強化
 - `.pot` の自動生成ツール

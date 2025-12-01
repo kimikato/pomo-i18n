@@ -1,7 +1,7 @@
 # tests/test_catalog_merge_basic.py
 # type: ignore
 
-from pypomo.catalog import Catalog, Message
+from pypomo.catalog import Catalog
 from pypomo.parser.types import POEntry
 from pypomo.utils.plural_forms import PluralRule
 

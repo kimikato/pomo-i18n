@@ -5,7 +5,7 @@ import gettext
 from pathlib import Path
 
 from pypomo.catalog import Catalog
-from pypomo.mo_writer import write_mo
+from pypomo.mo.writer import write_mo
 from pypomo.parser.types import POEntry
 
 

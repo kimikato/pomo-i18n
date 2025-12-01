@@ -11,7 +11,7 @@ from pypomo.utils.plural_forms import PluralRule
 
 
 @dataclass(slots=True)
-class Message:
+class CatalogMessage:
     """Represents a single resolved message in a catalog."""
 
     msgid: str
@@ -48,7 +48,7 @@ class Catalog:
         self.languages = list(languages) if languages is not None else None
 
         # Private internal storage of messages
-        self.__messages: Dict[str, Message] = {}
+        self.__messages: Dict[str, CatalogMessage] = {}
 
         # Plural forms evaluator (None until loaded from header)
         self.plural_rule: PluralRule | None = None
@@ -61,7 +61,7 @@ class Catalog:
     # ----------------------------------------
     # Private getters for internal state (Step 2 additions)
     # ----------------------------------------
-    def _iter_messages(self) -> ValuesView[Message]:
+    def _iter_messages(self) -> ValuesView[CatalogMessage]:
         """Internal-only: iterate over stored Message objects."""
         return self.__messages.values()
 
@@ -135,7 +135,7 @@ class Catalog:
     # ----------------------------------------
     # Mutation helpers
     # ----------------------------------------
-    def add_message(self, message: Message) -> None:
+    def add_message(self, message: CatalogMessage) -> None:
         """Add or replace a single message."""
         self.__messages[message.msgid] = message
 
@@ -181,7 +181,7 @@ class Catalog:
             # singular msgstr or fallback to msgid
             singular = entry.msgstr if entry.msgstr else entry.msgid
 
-            msg = Message(
+            msg = CatalogMessage(
                 msgid=entry.msgid,
                 singular=singular,
                 plural=entry.msgid_plural,
@@ -194,3 +194,44 @@ class Catalog:
 
     def header_msgstr(self) -> str:
         return self._header_raw or ""
+
+    def add_singular(self, msgid: str, msgstr: str) -> None:
+        # Fallback: empty msgstr → use msgid
+        singular = msgstr if msgstr else msgid
+
+        self.__messages[msgid] = CatalogMessage(
+            msgid=msgid,
+            singular=singular,
+            plural=None,
+            translations={},
+        )
+
+        # If Header (msgid == ""), also update _header_raw
+        if msgid == "":
+            self._header_raw = singular
+            # If no plural_rule yet, interpret it here
+            if self.plural_rule is None:
+                self._load_header(singular)
+
+    def add_plural(
+        self,
+        msgid: str,
+        msgid_plural: str,
+        forms: list[str],
+    ) -> None:
+        # If form[0] exists, it will be used as singular,
+        # otherwise msgid will be used as fallback.
+        singular: str = ""
+        if forms:
+            singular = forms[0]
+        else:
+            singular = msgid
+
+        plural_map: Dict[int, str] = {i: f for i, f in enumerate(forms)}
+
+        self.__messages[msgid] = CatalogMessage(
+            msgid=msgid,
+            singular=singular,
+            plural=msgid_plural,
+            translations=plural_map,
+        )

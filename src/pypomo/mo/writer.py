@@ -6,7 +6,7 @@ import struct
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from .catalog import Catalog
+from pypomo.catalog import Catalog
 
 
 def _build_message_map(catalog: Catalog) -> Dict[str, str]:
