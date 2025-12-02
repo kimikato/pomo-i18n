@@ -1,12 +1,12 @@
-# py-pomo
+# pomo-i18n
 
 [English](README.md) | **日本語**
 
-[![Tests](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml)
-[![PyPI version](https://img.shields.io/pypi/v/py-pomo.svg)](https://pypi.org/project/py-pomo/)
+[![Tests](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml)
+[![PyPI version](https://img.shields.io/pypi/v/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-`py-pomo` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。
+`pomo-i18n` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。
 
 `.po` と `.mo` ファイルを自前でパースし、外部依存なしで `gettext()` / `ngettext()` を使用できるようにします。
 
@@ -81,7 +81,7 @@ locales/
 
 ## `.po` の解析
 
-`py-pomo` の POParser は、 gettext の基本要素をサポートします：
+`pomo-i18n` の POParser は、 gettext の基本要素をサポートします：
 
 - `msgid` / `msgstr`
 - 複数形：`msgid_plural` / `msgstr[n]`
@@ -111,7 +111,7 @@ Plural-Forms: nplurals=3;
         n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);
 ```
 
-`py-pomo` は C 風構文（ `&&` / `||` / `? :` ）を Python 構文に変換し、制限付き `eval()` で安全に評価します。
+`pomo-i18n` は C 風構文（ `&&` / `||` / `? :` ）を Python 構文に変換し、制限付き `eval()` で安全に評価します。
 
 ---
 
@@ -148,7 +148,7 @@ from pypomo.gettext import gettext, ngettext, translation
 
 ## `.mo` ファイルの書き出し
 
-`py-pomo` には GNU gettext 互換の `.mo` バイナリを書き出すための `write_mo()` 関数が含まれています。
+`pomo-i18n` には GNU gettext 互換の `.mo` バイナリを書き出すための `write_mo()` 関数が含まれています。
 `Catalog` インスタンスを `.mo` ファイルに変換できます。
 
 ### 例： Catalog を `.mo` ファイルとして出力する
@@ -207,7 +207,7 @@ print(trans.gettext("Hello"))  # -> 「こんにちは」
 
 ## `.mo` ファイルの読み込み
 
-`py-pomo` には GNU gettext 互換の `.mo` バイナリファイルを `Catalog` に読み込むためのローダーが付属しています。
+`pomo-i18n` には GNU gettext 互換の `.mo` バイナリファイルを `Catalog` に読み込むためのローダーが付属しています。
 
 ### 例： `.mo` ファイルを `Catalog` として読み込む
 
@@ -265,7 +265,7 @@ print(cat.ngettext("apple", "apples", 3))
 - 編集しやすい： `.po`
 - 配布や読み込みが速い： `.mo`
 
-どちらも `py-pomo` は自然に扱えるので、目的に応じて `.po` / `.mo` を使い分けられます。
+どちらも `pomo-i18n` は自然に扱えるので、目的に応じて `.po` / `.mo` を使い分けられます。
 
 ---
 

@@ -1,6 +1,6 @@
-# py-pomo API Reference
+# pomo-i18n API Reference
 
-This document provides a structured overview of the public API surface of `py-pomo`.
+This document provides a structured overview of the public API surface of `pomo-i18n`.
 It is intended for users who need deeper details beyond the README.
 
 ---
@@ -24,7 +24,7 @@ It is intended for users who need deeper details beyond the README.
 from pypomo.catalog import Catalog
 ```
 
-The central data structure of `py-pomo`.
+The central data structure of `pomo-i18n`.
 Represents an in-memory translation catalog.
 
 ### Creating a Catalog

@@ -1,7 +1,7 @@
 # src/pypomo/__init__.py
 
 """
-py-pomo: small gettext-compatible i18n helper.
+pomo-i18n: small gettext-compatible i18n helper.
 
 Public API:
 

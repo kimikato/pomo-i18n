@@ -33,15 +33,20 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
     if not header:
         # No header found — create a minimal valid gettext header
         header_lines = [
-            "Project-Id-Version: py-pomo 1.0\n",
-            "MIME-Version: 1.0\n",
-            "Content-Type: text/plain; charset=UTF-8\n",
-            "Content-Transfer-Encoding: 8bit\n",
+            "Project-Id-Version: PACKAGE VERSION",
+            "Report-Msgid-Bugs-To: ",
+            "POT-Creation-Date: ",
+            "PO-Revision-Date: ",
+            "Last-Translator: ",
+            "Language-Team: ",
+            "MIME-Version: 1.0",
+            "Content-Type: text/plain; charset=UTF-8",
+            "Content-Transfer-Encoding: 8bit",
         ]
 
         # Language (if known)
         if catalog.languages:
-            header_lines.append(f"Language: {catalog.languages[0]}\n")
+            header_lines.append(f"Language: {catalog.languages[0]}")
 
         # Plural-Forms fallback
         npl = catalog.nplurals if catalog.nplurals is not None else 2
@@ -54,11 +59,11 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
             plural_expr = "(n != 1)"  # safe-ish default
 
         header_lines.append(
-            f"Plural-Forms: nplurals={npl}; plural={plural_expr};\n"
+            f"Plural-Forms: nplurals={npl}; plural={plural_expr};"
         )
 
         if "Content-Type" not in header:
-            header += "Content-Type: text/plain; charset=UTF-8\n"
+            header += "Content-Type: text/plain; charset=UTF-8"
 
         header = "".join(header_lines)
 
