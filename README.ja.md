@@ -8,15 +8,15 @@
 
 `py-pomo` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。
 
-`.po` ファイルを自前でパースし、外部依存なしで `gettext()` / `ngettext()` を使用できるようにします。
+`.po` と `.mo` ファイルを自前でパースし、外部依存なしで `gettext()` / `ngettext()` を使用できるようにします。
 
 ---
 
 ## 特長
 
-- ✔ `.po` ファイル、 `.mo` ファイルをパース（gettext 形式）
+- ✔ `.po` ファイル、 `.mo` ファイルをパース（ gettext 形式）
 - ✔ 複数形ルール（`Plural-Forms:`） を解析し、複雑な複数形ルールに対応
-- ✔ mypy / Pylance 完全対応（strict モード）
+- ✔ mypy / Pylance 完全対応（ strict モード）
 - ✔ gettext 互換 API `gettext` / `ngettext` / `translation`
 - ✔ OS 依存なし（libintl 不要）
 - ✔ Linux / macOS / Windows で動作
@@ -38,6 +38,15 @@ pip install py-pomo
 src/
  └─ pypomo/
 ```
+
+---
+
+## ドキュメント
+
+より詳細な技術仕様（API リファレンス / ベンチマーク結果）は英語版ドキュメントをご覧ください。
+
+- [API リファレンス](docs/api.md) （英語版）
+- [ベンチマーク結果](docs/benchmarks.md) （英語版）
 
 ---
 
@@ -72,13 +81,17 @@ locales/
 
 ## `.po` の解析
 
-`py-pomo` の POParser は、gettext の基本要素をサポートします：
+`py-pomo` の POParser は、 gettext の基本要素をサポートします：
 
 - `msgid` / `msgstr`
 - 複数形：`msgid_plural` / `msgstr[n]`
 - 複数行文字列
-- コメント（`#`, `#.`, `#:`, `#,` など）
-- ヘッダー（`msgid ""`）の解析 -> ここから 複数形ルール（`Plural-Forms:`） を抽出
+- gettext のコメント形式に対応：
+  - `#`（翻訳者コメント）
+  - `#.`（抽出コメント）
+  - `#:`（参照コメント）
+  - `#, flags`（通常コメントとして処理。`fuzzy` の特別扱いは未対応）
+- ヘッダー（`msgid ""`）の解析 -> ここから 複数形ルール（`Plural-Forms:`）を抽出
 
 ---
 
@@ -98,7 +111,7 @@ Plural-Forms: nplurals=3;
         n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);
 ```
 
-`py-pomo` は C 風構文（`&&` / `||` / `? :`）を Python 構文に変換し、制限付き `eval()` で安全に評価します。
+`py-pomo` は C 風構文（ `&&` / `||` / `? :` ）を Python 構文に変換し、制限付き `eval()` で安全に評価します。
 
 ---
 
@@ -110,12 +123,12 @@ Plural-Forms: nplurals=3;
 from pypomo.catalog import Catalog
 ```
 
-| メソッド                        | 説明                        |
-| ------------------------------- | --------------------------- |
-| `gettext(msgid)`                | 単純翻訳                    |
-| `ngettext(singular, plural, n)` | 複数形に対応した翻訳        |
-| `bulk_update(messages)`         | メッセージ辞書のマージ      |
-| `from_po_entries(entries)`      | POEntry から Catalog を構築 |
+| メソッド                        | 説明                      |
+| ------------------------------- | ------------------------- |
+| `gettext(msgid)`                | 単純翻訳                  |
+| `ngettext(singular, plural, n)` | 複数形に対応した翻訳      |
+| `merge(other)`                  | 他の Catalog をマージする |
+| `header_msgstr()`               | ヘッダーを返す            |
 
 ---
 
@@ -125,11 +138,11 @@ from pypomo.catalog import Catalog
 from pypomo.gettext import gettext, ngettext, translation
 ```
 
-| 関数                                        | 説明                                       |
-| ------------------------------------------- | ------------------------------------------ |
-| `gettext(msgid)`                            | デフォルトカタログでの翻訳                 |
-| `ngettext(singular, plural, n)`             | 複数形を考慮した翻訳                       |
-| `translation(domain, localedir, languages)` | 特定の .po を読み込んで新規 Catalog を返す |
+| 関数                                        | 説明                                                 |
+| ------------------------------------------- | ---------------------------------------------------- |
+| `gettext(msgid)`                            | デフォルトカタログでの翻訳                           |
+| `ngettext(singular, plural, n)`             | 複数形を考慮した翻訳                                 |
+| `translation(domain, localedir, languages)` | 特定の `.po` ファイルを読み込んで新規 Catalog を返す |
 
 ---
 
@@ -138,11 +151,11 @@ from pypomo.gettext import gettext, ngettext, translation
 `py-pomo` には GNU gettext 互換の `.mo` バイナリを書き出すための `write_mo()` 関数が含まれています。
 `Catalog` インスタンスを `.mo` ファイルに変換できます。
 
-### 例：Catalog を `.mo` ファイルとして出力する
+### 例： Catalog を `.mo` ファイルとして出力する
 
 ```python
 from pypomo.catalog import Catalog
-from pypomo.mo_writer import write_mo
+from pypomo.mo.writer import write_mo
 from pypomo.parser.types import POEntry
 
 entries = [
@@ -186,7 +199,7 @@ print(trans.gettext("Hello"))  # -> 「こんにちは」
 ### 特長
 
 - GNU gettext の `.mo` フォーマットと互換
-- msgid="" がない場合でも自動でヘッダーを生成
+- `msgid=""` がない場合でも自動でヘッダーを生成
 - 複数形（nplurals / 複数形判定式）に対応
 - 出力は UTF-8、追加依存なし
 
@@ -196,7 +209,7 @@ print(trans.gettext("Hello"))  # -> 「こんにちは」
 
 `py-pomo` には GNU gettext 互換の `.mo` バイナリファイルを `Catalog` に読み込むためのローダーが付属しています。
 
-### 例：`.mo` ファイルを `Catalog` として読み込む
+### 例： `.mo` ファイルを `Catalog` として読み込む
 
 ```python
 from pypomo.mo.loader import load_mo
@@ -212,13 +225,13 @@ print(cat.ngettext("apple", "apples", 3))
 ### 対応している内容
 
 - GNU gettext `.mo` バイナリ形式と互換
-- リトルエンディアンのマジックナンバー (0x9504120E) を検証
+- リトルエンディアンのマジックナンバー ( 0x9504120E ) を検証
 - `msgid ""` からヘッダー情報（`Plural-Forms:` など）を解析
-- 複数形ルール（plural expression）の適切な処理
+- 複数形ルール（Plural expression）の適切な処理
 - 以下のすべてを正しく読み込めます：
   - 単数メッセージ
-  - 複数メッセージ（`msgid "\x00"` で区切る）
-  - 複数形の各フォーム（`msgstr[n]` 相当）
+  - 複数メッセージ（ `msgid "\x00"` で区切る）
+  - 複数形の各フォーム（ `msgstr[n]` 相当）
 
 ### 動作の流れ
 
@@ -247,12 +260,12 @@ print(cat.ngettext("apple", "apples", 3))
 - 本番環境へのデプロイで安定性が高い
 - `gettext` や `msgfmt` が生成した `.mo` と完全互換
 
-### `.po` でも `.mo` でも自由に選べる
+### `.po` でも `.mo` でも目的に応じて選択が可能
 
 - 編集しやすい： `.po`
 - 配布や読み込みが速い： `.mo`
 
-どちらも `py-pomo` は自然に扱えるので、プロジェクトにあわせて自由に選択できます。
+どちらも `py-pomo` は自然に扱えるので、目的に応じて `.po` / `.mo` を使い分けられます。
 
 ---
 
@@ -260,38 +273,38 @@ print(cat.ngettext("apple", "apples", 3))
 
 2 種類のベンチマークがあります:
 
-### 1. Micro benchmark (timeit)
+### 1. Micro benchmark ( timeit )
 
-```sh
+```bash
 make bench
 ```
 
 ### 2. pytest-benchmark
 
-```sh
+```bash
 make bench-pytest
 ```
 
-### 🏎 複数形評価（Plural Expression） ベンチマーク
+### 🏎 複数形評価 （ Plural Expression ） ベンチマーク
 
-複数形選択（plural rule evaluation）は gettext の内部処理で最も頻繁に実行されるため、
+複数形選択（ plural rule evaluation ）は gettext の内部処理で最も頻繁に実行されるため、
 キャッシュ方式によりパフォーマンスが大きく変わります。
 以下は実際のベンチマーク結果です。
 
 #### 計測環境
 
-- Python 3.10
+- Python 3.10.19
 - macOS Tahoe 26.1 (Apple Silicon, M4)
-- pytest-benchmark
+- pytest-benchmark 5.2.3
 - pypomo default settings
 
 #### キャッシュ方式ごとの比較結果
 
-| Backend  | Simple Rule (µs) | Complex Rule (µs) | コメント                              |
-| -------- | ---------------- | ----------------- | ------------------------------------- |
-| **none** | 約 2.54          | 約 4.83           | キャッシュなし。デバッグ向け。        |
-| **weak** | 約 2.69          | 約 4.89           | Python の dict による簡易キャッシュ。 |
-| **lru**  | 約 2.49          | 約 4.92           | もっとも高速（CPython の LRU 実装）。 |
+| Backend  | Simple Rule ( µs ) | Complex Rule ( µs ) | コメント                               |
+| -------- | ------------------ | ------------------- | -------------------------------------- |
+| **none** | 約 2.54            | 約 4.83             | キャッシュなし。デバッグ向け。         |
+| **weak** | 約 2.69            | 約 4.89             | Python の dict による簡易キャッシュ。  |
+| **lru**  | 約 2.49            | 約 4.92             | もっとも高速（ CPython の LRU 実装）。 |
 
 #### まとめ
 
@@ -329,7 +342,7 @@ cache = get_default_cache(backend="lru")
 ## 今後の予定
 
 - 複数言語のフォールバック対応
-- コメント（`#, fuzzy`、`#.` など）の強化
+- コメント（ `#, fuzzy`、`#.` など）の強化
 - `.pot` の自動生成ツール
 - CLI ツールの提供
 

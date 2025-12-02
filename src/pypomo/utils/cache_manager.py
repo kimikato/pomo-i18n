@@ -103,11 +103,11 @@ def get_default_cache(
 
     Unknown values fall back to "weak".
     """
-    backend = backend or os.getenv('PYPOMO_CACHE', 'weak').lower()
+    backend = backend or os.getenv('PYPOMO_CACHE', 'lru').lower()
     maxsize = maxsize or int(os.getenv('PYPOMO_PLURAL_CACHE_SIZE', "256"))
 
     if backend not in {"none", "weak", "lru"}:
-        backend = "weak"
+        backend = "lru"
 
     cache = PluralExprCache(backend=backend, maxsize=maxsize)
 

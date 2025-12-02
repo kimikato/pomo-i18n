@@ -1,15 +1,44 @@
 [project]
 name = "pypomo"
 version = "0.1.0"
-description = "Minimal strict-typed gettext-style i18n library."
+description = "Strict-typed, dependency-free gettext-compatible i18n library (PO/MO parser, Plural-Forms evaluator, Catalog API)."
 authors = [{ name = "Kiminori Kato" }]
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = []
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Operating System :: OS Independent",
+	"Topic :: Software Development :: Internationalization",
+	"Topic :: Software Development :: Localization",
+]
+
+[project.urls]
+Homepage = "https://github.com/kimikato/py-pomo"
+Source = "https://github.com/kimikato/py-pomo"
+Issues = "https://github.com/kimikato/py-pomo/issues"
+Documentation = "https://github.com/kimikato/py-pomo/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pypomo"]
 
 [project.optional-dependencies]
-dev = ["black", "flake8", "mypy", "pytest", "coverage", "pytest-benchmark"]
+dev = [
+	"black",
+	"flake8",
+	"mypy",
+	"pytest",
+	"coverage",
+	"pytest-benchmark",
+	"bui;d",
+]
 
 [build-system]
 requires = ["hatchling"]
