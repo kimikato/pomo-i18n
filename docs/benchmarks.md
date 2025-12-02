@@ -1,4 +1,4 @@
-# py-pomo Benchmark Suite
+# pomo-i18n Benchmark Suite
 
 This document summarizes benchmark methodology and results related to plural-rule evaluation and translation lookup performance.
 

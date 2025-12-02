@@ -1,5 +1,5 @@
 # ============================================================
-# py-pomo Makefile
+# pomo-i18n Makefile
 #
 # This Makefile provides a unified interface for:
 #   - Installing development dependencies
@@ -34,7 +34,7 @@
 # Install development dependencies
 # ------------------------------------------------------------
 init:
-	@echo ">>> Installing py-pomo development dependencies..."
+	@echo ">>> Installing pomo-i18n development dependencies..."
 	pip install -e .[dev]
 
 

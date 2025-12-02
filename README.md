@@ -1,14 +1,14 @@
-# py-pomo
+# pomo-i18n
 
 **English** | [日本語](README.ja.md)
 
-[![Tests](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/py-pomo/actions/workflows/tests.yml)
-[![PyPI version](https://img.shields.io/pypi/v/py-pomo.svg)](https://pypi.org/project/py-pomo/)
+[![Tests](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml)
+[![PyPI version](https://img.shields.io/pypi/v/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A minimal, strictly-typed gettext-compatible internationalization library for Python.
 
-`py-pomo` provides `.po` and `.mo` parsing, safe plural-form evaluation, and a clean Pythonic API (`gettext`, `ngettext`, `translation`) — all without external dependencies.
+`pomo-i18n` provides `.po` and `.mo` parsing, safe plural-form evaluation, and a clean Pythonic API (`gettext`, `ngettext`, `translation`) — all without external dependencies.
 
 ---
 
@@ -76,7 +76,7 @@ locales/
 
 ## `.po` Parsing
 
-`py-pomo` contains a robust standalone `.po` parser:
+`pomo-i18n` contains a robust standalone `.po` parser:
 
 - `msgid`, `msgstr`
 - plurals ( `msgid_plural`, `msgstr[n]` )
@@ -125,7 +125,7 @@ The generated `.mo` file is fully compatible with Python’s built-in `gettext.G
 
 ## `.mo` Loading
 
-`py-pomo` can also load GNU gettext `.mo` files back into a `Catalog`:
+`pomo-i18n` can also load GNU gettext `.mo` files back into a `Catalog`:
 
 ```python
 from pypomo.mo.loader import load_mo
@@ -147,7 +147,7 @@ Features:
 
 ## Plural Forms
 
-`py-pomo` safely evaluates C-style plural rules:
+`pomo-i18n` safely evaluates C-style plural rules:
 
 Example:
 
