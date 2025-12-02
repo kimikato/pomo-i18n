@@ -21,10 +21,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kimikato/py-pomo"
-Source = "https://github.com/kimikato/py-pomo"
-Issues = "https://github.com/kimikato/py-pomo/issues"
-Documentation = "https://github.com/kimikato/py-pomo/tree/main/docs"
+Homepage = "https://github.com/kimikato/pomo-i18n"
+Source = "https://github.com/kimikato/pomo-i18n"
+Issues = "https://github.com/kimikato/pomo-i18n/issues"
+Documentation = "https://github.com/kimikato/pomo-i18n/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["pypomo"]
