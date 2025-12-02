@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import List, Optional
 
@@ -46,7 +47,6 @@ class POParser:
 
             # Empty → commit
             if not line:
-                commit()
                 continue
 
             # Comments
@@ -86,6 +86,18 @@ class POParser:
             if line.startswith("msgstr["):
                 if current is None:
                     raise ValueError("msgstr[n] without msgid")
+
+                # the format of "msgstr[0] 'apple'"
+                #  -> Parse robustly with regular expressions
+                m = re.match(r'msgstr\[(\d+)\]\s+"(.*)"', line)
+                if m:
+                    idx = int(m.group(1))
+                    text = m.group(2)
+                    current.msgstr_plural[idx] = text
+                    current_field = f"msgstr_plural[{idx}]"
+                    continue
+
+                # fallback
                 idx = int(line[len("msgstr[") : line.index("]")])
                 text = strip_quotes(line[line.index("]") + 1 :].strip())
                 current.msgstr_plural[idx] = text

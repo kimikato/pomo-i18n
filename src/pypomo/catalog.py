@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import re
+from collections.abc import ValuesView
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Mapping, Tuple
+from typing import Dict, Iterable, List
 
 from pypomo.parser.types import POEntry
-
-# Type for plural evaluation function
-PluralEval = Callable[[int], int]
+from pypomo.utils.plural_forms import PluralRule
 
 
 @dataclass(slots=True)
-class Message:
+class CatalogMessage:
     """Represents a single resolved message in a catalog."""
 
     msgid: str
@@ -29,9 +27,14 @@ class Catalog:
     In-memory message catalog.
 
     Responsibilities:
-    - Provide gettext / ngettext translation lookups
-    - Hold runtime Message objects
-    - Be format-agnostic (.po/.mo loading happens externally)
+        - Provide gettext / ngettext translation lookups
+        - Manage plural rules via Plural-Forms
+        - Build message objects from POEntry structures
+
+    Internal notice:
+        - __messages is considered private
+        - External code should not rely on its structure
+
     """
 
     def __init__(
@@ -43,66 +46,53 @@ class Catalog:
         self.domain = domain
         self.localedir = localedir
         self.languages = list(languages) if languages is not None else None
-        self._messages: Dict[str, Message] = {}
 
-        # plural forms evaluator
-        self.plural_eval: PluralEval | None = None
-        self.nplurals: int = 2  # default: English-like
+        # Private internal storage of messages
+        self.__messages: Dict[str, CatalogMessage] = {}
 
-    # ------------------------------
+        # Plural forms evaluator (None until loaded from header)
+        self.plural_rule: PluralRule | None = None
+        # Keep nplurals for compatibility with tests / mo_writer
+        self.nplurals: int | None = None
+
+        # header
+        self._header_raw: str = ""
+
+    # ----------------------------------------
+    # Private getters for internal state (Step 2 additions)
+    # ----------------------------------------
+    def _iter_messages(self) -> ValuesView[CatalogMessage]:
+        """Internal-only: iterate over stored Message objects."""
+        return self.__messages.values()
+
+    # ----------------------------------------
     # Header: Parse plural-forms
-    # ------------------------------
-    def set_plural_forms(self, nplurals: int, expression: str) -> None:
-        """Register plural rule from gettext header."""
-        self.nplurals = nplurals
-
-        expr = expression.strip()
-
-        # Convert gettext-like syntax to Python
-        expr = expr.replace("&&", " and ").replace("||", " or ")
-
-        # Replace unary '!' (not followed by '=') with 'not '
-        # e.g. "!(n == 1)" → "not (n == 1)"
-        def repl_not(m: re.Match[str]) -> str:
-            return " not " + m.group(1)
-
-        expr = re.sub(r"!\s*([^=])", repl_not, expr)
-
-        # minimal ternary operator conversion: cond ? a : b
-        if "?" in expr and ":" in expr:
-            expr = self._convert_ternary(expr)
-
-        # compile into safe eval object
-        code = compile(expr, "<plural-form>", "eval")
-
-        def plural_func(n: int) -> int:
-            return int(eval(code, {"__builtins__": {}}, {"n": n}))
-
-        self.plural_eval = plural_func
-
-    def _convert_ternary(self, s: str) -> str:
-        """Convert C-style ternary operator to Python's `a if cond else b`.
-
-        This is simplified but covers all known gettext plural rules.
-        pattern:  cond ? val1 : val2
+    # ----------------------------------------
+    def _load_header(self, header_msgstr: str) -> None:
         """
-        q = s.find("?")
-        colon = s.find(":", q)
+        Try to extract a Plural-Forms rule from the header msgstr.
 
-        if q == -1 or colon == -1:
-            return s
+        The header is a concatenated string of lines like:
+            "Language: en\\n"
+            "Plural-Forms: nplurals=2; plural=(n != 1);\\n"
+        """
+        if "Plural-Forms" not in header_msgstr:
+            return
 
-        cond = s[:q].strip()
-        val1 = s[q + 1 : colon].strip()
-        val2 = s[colon + 1 :].strip()
+        try:
+            rule = PluralRule.from_header(header_msgstr)
+            self.plural_rule = rule
+            self.nplurals = rule.nplurals
+        except Exception:
+            # Fail-safe: leave plural_rule / nplurals as-is
+            pass
 
-        return f"({val1} if {cond} else {val2})"
-
-    # ------------------------------
+    # ----------------------------------------
     # Lookup API
-    # ------------------------------
+    # ----------------------------------------
     def gettext(self, msgid: str) -> str:
-        message = self._messages.get(msgid)
+        """Return translated string or msgid if not found."""
+        message = self.__messages.get(msgid)
         if message is None:
             return msgid
 
@@ -110,63 +100,88 @@ class Catalog:
         if not message.translations:
             return message.singular
 
-        # Default singular form
+        # Singular form = index 0
         return message.translations.get(0, message.singular)
 
     def ngettext(self, singular: str, plural: str, n: int) -> str:
-        message = self._messages.get(singular)
+        """
+        Return plural-aware translation.
+
+        If plural_rule is available, its result is used as plural index.
+        Otherwise falls back to an English-like rule: 0 if n == 1 else 1.
+        """
+        message = self.__messages.get(singular)
 
         if message is None:
+            # No translation → return original strings
             return singular if n == 1 else plural
 
-        # plural evaluator
-        if self.plural_eval is None:
+        # select index
+        if self.plural_rule is None:
+            # Fallback: English-style behavior
             index = 0 if n == 1 else 1
         else:
-            index = self.plural_eval(n)
-            if index < 0 or index >= self.nplurals:
-                index = 0  # Safe fallback
+            index = self.plural_rule(n)
 
-        # lookup translation if exists
+        # Use translated plural form if available
         if index in message.translations:
             return message.translations[index]
 
-        # fallback
+        # Missing plural entry -> conservative fallback
         if index == 0:
             return message.singular
         return message.plural or plural
 
-    # ------------------------------
+    # ----------------------------------------
     # Mutation helpers
-    # ------------------------------
-    def add_message(self, message: Message) -> None:
-        self._messages[message.msgid] = message
+    # ----------------------------------------
+    def add_message(self, message: CatalogMessage) -> None:
+        """Add or replace a single message."""
+        self.__messages[message.msgid] = message
 
-    def bulk_update(self, messages: Mapping[str, Message]) -> None:
-        self._messages.update(messages)
+    def merge(self, other: Catalog) -> None:
+        """
+        Merge messages from another Catalog.
 
-    # ------------------------------
+        This is a public helper that keeps __messages private, while still
+        allowing catalogs built from different PO files to be merged.
+        """
+        # Accessing __messages is allowed from within the same class
+        self.__messages.update(other.__messages)
+
+        # If the current catalog has no plural_rule yet, inherit from other
+        if self.plural_rule is None and other.plural_rule is not None:
+            self.plural_rule = other.plural_rule
+            self.nplurals = other.nplurals
+
+    # ----------------------------------------
     # Construction helpers
-    # ------------------------------
+    # ----------------------------------------
     @classmethod
     def from_po_entries(cls, entries: List[POEntry]) -> Catalog:
-        """Create a Catalog from a list of parsed POEntry objects."""
+        """
+        Build a Catalog from a list of POEntry objects.
+
+        This will:
+            - Extract Plural-Forms from the header entry (msgid == "")
+            - Convert all non-header entries into Message instances
+        """
         catalog = cls()
 
-        # Detect PO header
-        if entries and entries[0].msgid == "":
-            header = entries[0].msgstr
-            nplurals, expr = cls._extract_plural_forms_from_header(header)
-            catalog.set_plural_forms(nplurals, expr)
-
+        # messages
         for entry in entries:
-            if entry.msgid == "":
-                continue  # header
 
+            # header
+            if entry.msgid == "":
+                catalog._header_raw = entry.msgstr
+                catalog._load_header(entry.msgstr)
+                continue
+
+            # normal entry
             # singular msgstr or fallback to msgid
             singular = entry.msgstr if entry.msgstr else entry.msgid
 
-            msg = Message(
+            msg = CatalogMessage(
                 msgid=entry.msgid,
                 singular=singular,
                 plural=entry.msgid_plural,
@@ -177,13 +192,46 @@ class Catalog:
 
         return catalog
 
-    @staticmethod
-    def _extract_plural_forms_from_header(header: str) -> Tuple[int, str]:
-        """Extract nplurals and plural expression from header text."""
-        nplurals_match = re.search(r"nplurals\s*=\s*(\d+)", header)
-        plural_match = re.search(r"plural\s*=\s*([^;]+)", header)
+    def header_msgstr(self) -> str:
+        return self._header_raw or ""
 
-        nplurals = int(nplurals_match.group(1)) if nplurals_match else 2
-        expr = plural_match.group(1).strip() if plural_match else "n != 1"
+    def add_singular(self, msgid: str, msgstr: str) -> None:
+        # Fallback: empty msgstr → use msgid
+        singular = msgstr if msgstr else msgid
 
-        return nplurals, expr
+        self.__messages[msgid] = CatalogMessage(
+            msgid=msgid,
+            singular=singular,
+            plural=None,
+            translations={},
+        )
+
+        # If Header (msgid == ""), also update _header_raw
+        if msgid == "":
+            self._header_raw = singular
+            # If no plural_rule yet, interpret it here
+            if self.plural_rule is None:
+                self._load_header(singular)
+
+    def add_plural(
+        self,
+        msgid: str,
+        msgid_plural: str,
+        forms: list[str],
+    ) -> None:
+        # If form[0] exists, it will be used as singular,
+        # otherwise msgid will be used as fallback.
+        singular: str = ""
+        if forms:
+            singular = forms[0]
+        else:
+            singular = msgid
+
+        plural_map: Dict[int, str] = {i: f for i, f in enumerate(forms)}
+
+        self.__messages[msgid] = CatalogMessage(
+            msgid=msgid,
+            singular=singular,
+            plural=msgid_plural,
+            translations=plural_map,
+        )
