@@ -26,7 +26,7 @@ A minimal, strictly-typed gettext-compatible internationalization library for Py
 ## Installation
 
 ```sh
-pip install py-pomo
+pip install pomo-i18n
 ```
 
 Or vendor it directly:
