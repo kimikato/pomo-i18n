@@ -5,14 +5,12 @@ __pycache__/
 *.pyd
 
 # virtualenv
-.venv/
+.venv*/
 env/
 venv/
 
 # VSCode
-.vscode/settings.json
-.vscode/launch.json
-.vscode/tasks.json
+.vscode/
 
 # MyPy cache
 .mypy_cache/
@@ -28,3 +26,14 @@ build/
 # Mac
 .DS_Store
 
+# gettext binary files
+locales/**/LC_MESSAGES/*.mo
+
+# Temp / scratch tests
+src/test*.py
+
+# coverage
+.coverage*
+coverage.xml
+htmlcov/
+.coverage
