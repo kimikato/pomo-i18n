@@ -29,7 +29,7 @@ Python プロジェクトへの組み込みを想定しています。
 ## インストール
 
 ```sh
-pip install py-pomo
+pip install pomo-i18n
 ```
 
 もしくは `src/` 内に同梱して使用することもできます。
