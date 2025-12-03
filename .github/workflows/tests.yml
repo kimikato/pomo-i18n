@@ -11,6 +11,9 @@ jobs:
     name: Python ${{ matrix.python-version }} Tests
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
@@ -18,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -30,17 +35,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
-      # ---- Lint 最初に ----
       - name: Lint (flake8)
         run: |
           flake8 src/pypomo
 
-      # ---- Type check ----
       - name: Run mypy
         run: |
           mypy src/pypomo --strict
 
-      # ---- Test & Coverage ----
       - name: Run tests with coverage
         run: |
           pip install coverage

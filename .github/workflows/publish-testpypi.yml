@@ -6,16 +6,16 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+
     permissions:
-      id-token: write
+      contents: read # ← checkout に必要
+      id-token: write # ← Trusted Publishing に必要
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: kimikato/pomo-i18n
-          persist-credentials: true
-          fetch-depth: 0
+          fetch-depth: 0 # ← タグ取得・正しいバージョン解決のために必要
 
       - name: Set up Python
         uses: actions/setup-python@v5
