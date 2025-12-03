@@ -2,7 +2,7 @@
 
 **English** | [日本語](README.ja.md)
 
-[![Tests](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml/badge.svg)](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml)
+![Tests](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml/badge.svg?branch=main)
 [![PyPI version](https://img.shields.io/pypi/v/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
