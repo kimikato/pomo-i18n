@@ -62,10 +62,7 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
             f"Plural-Forms: nplurals={npl}; plural={plural_expr};"
         )
 
-        if "Content-Type" not in header:
-            header += "Content-Type: text/plain; charset=UTF-8"
-
-        header = "".join(header_lines)
+        header = "\n".join(header_lines)
 
     result[""] = header
 
