@@ -2,8 +2,8 @@ name: Publish to PyPI
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 jobs:
   build-and-publish:
@@ -34,5 +34,5 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist
           attestations: true
+          packages-dir: dist
