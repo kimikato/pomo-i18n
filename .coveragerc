@@ -4,7 +4,7 @@
 # 測定対象
 source = pypomo
 branch = True
-parallel = True
+parallel = False
 
 # 除外対象（必要に応じて追加）
 omit =
@@ -19,4 +19,4 @@ precision = 1
 exclude_lines =
     pragma: no cover
     if TYPE_CHECKING:
-    if __name__ == .__main__.:
+    if __name__ == "__main__":
