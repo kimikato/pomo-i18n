@@ -1,6 +1,6 @@
 [project]
 name = "pomo-i18n"
-version = "0.1.4"
+version = "0.1.5"
 description = "Strict-typed, dependency-free gettext-compatible i18n library (PO/MO parser, Plural-Forms evaluator, Catalog API)."
 authors = [{ name = "Kiminori Kato" }]
 readme = { file = "README.md", content-type = "text/markdown" }
