@@ -3,9 +3,9 @@
 [English](README.md) | **日本語**
 
 ![Tests](https://github.com/kimikato/pomo-i18n/actions/workflows/tests.yml/badge.svg?branch=main)
-[![Codecov](https://codecov.io/gh/kimikato/pomo-i18n/branch/main/graph/badge.svg)](https://codecov.io/gh/kimikato/pomo-i18n)
+[![coverage](https://img.shields.io/codecov/c/github/kimikato/pomo-i18n/main?label=coverage&logo=codecov)](https://codecov.io/gh/kimikato/pomo-i18n)
 [![PyPI version](https://img.shields.io/pypi/v/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
-[![Python](https://img.shields.io/pypi/pyversions/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)◊
+[![Python](https://img.shields.io/pypi/pyversions/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 `pomo-i18n` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。

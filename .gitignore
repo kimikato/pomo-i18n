@@ -33,7 +33,7 @@ locales/**/LC_MESSAGES/*.mo
 src/test*.py
 
 # coverage
-.coverage*
+.coverage
+.coverage.*
 coverage.xml
 htmlcov/
-.coverage
