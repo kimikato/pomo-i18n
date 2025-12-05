@@ -38,6 +38,7 @@ dev = [
 	"coverage",
 	"pytest-benchmark",
 	"build",
+	"polib",
 ]
 
 [build-system]
@@ -71,13 +72,6 @@ ignore_missing_imports = true
 
 # src/pypomo/* を対象
 mypy_path = "src"
-
-# ---------------------------------------------------------
-# Pytest
-# ---------------------------------------------------------
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-q"
 
 # ---------------------------------------------------------
 # Coverage
