@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import ValuesView
+from collections.abc import Iterable, ValuesView
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 from pypomo.parser.types import POEntry
 from pypomo.utils.plural_forms import PluralRule
@@ -12,7 +12,9 @@ from pypomo.utils.plural_forms import PluralRule
 
 @dataclass(slots=True)
 class CatalogMessage:
-    """Represents a single resolved message in a catalog."""
+    """
+    Represents a single resolved message in a catalog.
+    """
 
     msgid: str
     singular: str
@@ -34,7 +36,6 @@ class Catalog:
     Internal notice:
         - __messages is considered private
         - External code should not rely on its structure
-
     """
 
     def __init__(
@@ -45,7 +46,11 @@ class Catalog:
     ) -> None:
         self.domain = domain
         self.localedir = localedir
-        self.languages = list(languages) if languages is not None else None
+
+        # Accept any iterable, but normalize to list[str]
+        self.languages: list[str] = (
+            list(languages) if languages is not None else []
+        )
 
         # Private internal storage of messages
         self.__messages: Dict[str, CatalogMessage] = {}
@@ -55,14 +60,16 @@ class Catalog:
         # Keep nplurals for compatibility with tests / mo_writer
         self.nplurals: int | None = None
 
-        # header
+        # Raw header message (msgid == "")
         self._header_raw: str = ""
 
     # ----------------------------------------
-    # Private getters for internal state (Step 2 additions)
+    # Private getters for internal state
     # ----------------------------------------
     def _iter_messages(self) -> ValuesView[CatalogMessage]:
-        """Internal-only: iterate over stored Message objects."""
+        """
+        Internal-only: iterate over stored Message objects.
+        """
         return self.__messages.values()
 
     # ----------------------------------------
@@ -88,6 +95,23 @@ class Catalog:
             pass
 
     # ----------------------------------------
+    # Plural index helper (gettext-compatible)
+    # ----------------------------------------
+    def _select_plural_index(self, n: int) -> int:
+        """
+        Compute plural index for n, using gettext-compatible fallback.
+
+        Rules:
+            - If plural_rule is present -> use it.
+            - Otherwise -> default rule: index = 0 if n == 1 else 1
+              (this matches gettext's built-in default when Plural-Forms
+               is not specified: nplurals=2; plural=(n != 1))
+        """
+        if self.plural_rule is None:
+            return 0 if n == 1 else 1
+        return self.plural_rule(n)
+
+    # ----------------------------------------
     # Lookup API
     # ----------------------------------------
     def gettext(self, msgid: str) -> str:
@@ -107,30 +131,43 @@ class Catalog:
         """
         Return plural-aware translation.
 
-        If plural_rule is available, its result is used as plural index.
-        Otherwise falls back to an English-like rule: 0 if n == 1 else 1.
+        Behavior is aligned with gettext:
+
+            - If no translation exists:
+                singular if n == 1 else plural
+
+            - Otherwise:
+                1) compute plural index i
+                2) if msgstr[i] exists -> return it
+                3) else if msgstr[0] exists -> return msgstr[0]
+                4) else if singular exists -> return singular
+                5) else -> fall back to original plural
         """
         message = self.__messages.get(singular)
 
+        # 1) No translation at all -> behave like gettext
         if message is None:
             # No translation → return original strings
             return singular if n == 1 else plural
 
-        # select index
-        if self.plural_rule is None:
-            # Fallback: English-style behavior
-            index = 0 if n == 1 else 1
-        else:
-            index = self.plural_rule(n)
+        # 2) Compute plural index using gettext-like rule
+        index = self._select_plural_index(n)
+        forms = message.translations
 
-        # Use translated plural form if available
-        if index in message.translations:
-            return message.translations[index]
+        # 3) Use exact plural form if available
+        if index in forms:
+            return forms[index]
 
-        # Missing plural entry -> conservative fallback
-        if index == 0:
+        # 4) Fallback: msgstr[0] if present
+        if 0 in forms:
+            return forms[0]
+
+        # 5) Fallback: singular (translated)
+        if message.singular:
             return message.singular
-        return message.plural or plural
+
+        # 6) Very last resort: original plural argument
+        return plural
 
     # ----------------------------------------
     # Mutation helpers
@@ -192,9 +229,16 @@ class Catalog:
 
         return catalog
 
+    # ----------------------------------------
+    # Header helpers
+    # ----------------------------------------
     def header_msgstr(self) -> str:
+        """Return raw header msgstr (msgid == "")."""
         return self._header_raw or ""
 
+    # ----------------------------------------
+    # Convenience adders
+    # ----------------------------------------
     def add_singular(self, msgid: str, msgstr: str) -> None:
         # Fallback: empty msgstr → use msgid
         singular = msgstr if msgstr else msgid
@@ -235,3 +279,26 @@ class Catalog:
             plural=msgid_plural,
             translations=plural_map,
         )
+
+    # ----------------------------------------
+    # Effective properties (safe defaults)
+    # ----------------------------------------
+    @property
+    def effective_nplurals(self) -> int:
+        """
+        Always return a valid nplurals value.
+        Default is 2 (gettext fallback), which matches common behavior
+        when Plural-Forms is missing.
+        """
+        if self.nplurals is not None:
+            return self.nplurals
+        return 2
+
+    @property
+    def effective_language(self) -> str | None:
+        """
+        Returns main language or None.
+
+        Does NOT invent a default ("C" や "en") — gettext compatible
+        """
+        return self.languages[0] if self.languages else None

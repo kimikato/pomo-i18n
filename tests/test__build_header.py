@@ -20,6 +20,14 @@ class DummyCatalog:
     def header_msgstr(self) -> str:
         return self._header
 
+    @property
+    def effective_language(self) -> str | None:
+        return self.languages[0] if self.languages else None
+
+    @property
+    def effective_nplurals(self) -> int:
+        return self.nplurals if self.nplurals is not None else 2
+
 
 def test_build_header_with_explicit_header():
     """

@@ -111,8 +111,8 @@ def _build_header(catalog: Catalog) -> str:
     ]
 
     # Languages
-    if catalog.languages:
-        lines.append(f"Language: {catalog.languages[0]}")
+    if catalog.effective_language:
+        lines.append(f"Language: {catalog.effective_language}")
 
     # Plural-Forms
     npl = catalog.nplurals if catalog.nplurals is not None else 2
