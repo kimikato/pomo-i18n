@@ -3,25 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, ValuesView
-from dataclasses import dataclass, field
 from typing import Dict, List
 
+from pypomo.catalog_message import CatalogMessage
 from pypomo.parser.types import POEntry
 from pypomo.utils.plural_forms import PluralRule
-
-
-@dataclass(slots=True)
-class CatalogMessage:
-    """
-    Represents a single resolved message in a catalog.
-    """
-
-    msgid: str
-    singular: str
-    plural: str | None = None
-    translations: Dict[int, str] = field(
-        default_factory=lambda: dict[int, str]()
-    )
 
 
 class Catalog:
