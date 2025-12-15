@@ -50,13 +50,55 @@ class Catalog:
         self._header_raw: str = ""
 
     # ----------------------------------------
+    # Internal API for __messages
+    # ----------------------------------------
+    def _get_messages(self) -> Dict[str, CatalogMessage]:
+        return self.__messages
+
+    def _set_messages(self, messages: Dict[str, CatalogMessage]) -> None:
+        self.__messages = messages
+
+    def _get_message(self, msgid: str) -> CatalogMessage | None:
+        return self.__messages.get(msgid)
+
+    def _set_message(self, message: CatalogMessage) -> None:
+        if message.msgid == "":
+            # Header is always an explicit override
+            self._set_header(message.singular, overwrite_plural=True)
+        self.__messages[message.msgid] = message
+
+    # ----------------------------------------
+    # Internal API for header
+    # ----------------------------------------
+    def _get_header(self) -> str | None:
+        return self._header_raw
+
+    def _set_header(
+        self, value: str, *, overwrite_plural: bool = False
+    ) -> None:
+        """
+        Set raw header msgstr and optionally (re)load plural rules.
+
+        overwrite_plural:
+            - False (default):
+                Do not override existing plural_rule / nplurals.
+            - True:
+                Always re-parse Plural-Forms from header.
+        """
+        self._header_raw = value
+
+        if overwrite_plural or self.plural_rule is None:
+            self._load_header(value)
+
+    # ----------------------------------------
     # Private getters for internal state
     # ----------------------------------------
     def _iter_messages(self) -> ValuesView[CatalogMessage]:
         """
         Internal-only: iterate over stored Message objects.
         """
-        return self.__messages.values()
+        messages: Dict[str, CatalogMessage] = self._get_messages()
+        return messages.values()
 
     # ----------------------------------------
     # Header: Parse plural-forms
@@ -102,7 +144,7 @@ class Catalog:
     # ----------------------------------------
     def gettext(self, msgid: str) -> str:
         """Return translated string or msgid if not found."""
-        message = self.__messages.get(msgid)
+        message: CatalogMessage | None = self._get_message(msgid)
         if message is None:
             return msgid
 
@@ -129,7 +171,7 @@ class Catalog:
                 4) else if singular exists -> return singular
                 5) else -> fall back to original plural
         """
-        message = self.__messages.get(singular)
+        message: CatalogMessage | None = self._get_message(singular)
 
         # 1) No translation at all -> behave like gettext
         if message is None:
@@ -160,7 +202,7 @@ class Catalog:
     # ----------------------------------------
     def add_message(self, message: CatalogMessage) -> None:
         """Add or replace a single message."""
-        self.__messages[message.msgid] = message
+        self._set_message(message)
 
     def merge(self, other: Catalog) -> None:
         """
@@ -196,8 +238,7 @@ class Catalog:
 
             # header
             if entry.msgid == "":
-                catalog._header_raw = entry.msgstr
-                catalog._load_header(entry.msgstr)
+                catalog._set_header(entry.msgstr, overwrite_plural=True)
                 continue
 
             # normal entry
@@ -220,7 +261,7 @@ class Catalog:
     # ----------------------------------------
     def header_msgstr(self) -> str:
         """Return raw header msgstr (msgid == "")."""
-        return self._header_raw or ""
+        return self._get_header() or ""
 
     # ----------------------------------------
     # Convenience adders
@@ -229,19 +270,14 @@ class Catalog:
         # Fallback: empty msgstr → use msgid
         singular = msgstr if msgstr else msgid
 
-        self.__messages[msgid] = CatalogMessage(
-            msgid=msgid,
-            singular=singular,
-            plural=None,
-            translations={},
+        self._set_message(
+            CatalogMessage(
+                msgid=msgid,
+                singular=singular,
+                plural=None,
+                translations={},
+            )
         )
-
-        # If Header (msgid == ""), also update _header_raw
-        if msgid == "":
-            self._header_raw = singular
-            # If no plural_rule yet, interpret it here
-            if self.plural_rule is None:
-                self._load_header(singular)
 
     def add_plural(
         self,
@@ -259,11 +295,13 @@ class Catalog:
 
         plural_map: Dict[int, str] = {i: f for i, f in enumerate(forms)}
 
-        self.__messages[msgid] = CatalogMessage(
-            msgid=msgid,
-            singular=singular,
-            plural=msgid_plural,
-            translations=plural_map,
+        self._set_message(
+            CatalogMessage(
+                msgid=msgid,
+                singular=singular,
+                plural=msgid_plural,
+                translations=plural_map,
+            )
         )
 
     # ----------------------------------------
