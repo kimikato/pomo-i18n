@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, ValuesView
-from typing import Dict, List
+from collections.abc import ItemsView, Iterable, KeysView, Mapping, ValuesView
+from typing import Dict, Iterator, List, TypeVar, cast, overload
 
 from pypomo.catalog_message import CatalogMessage
 from pypomo.parser.types import POEntry
 from pypomo.utils.plural_forms import PluralRule
+
+_T = TypeVar("_T")
+_MISSING = object()
 
 
 class Catalog:
@@ -48,6 +51,16 @@ class Catalog:
 
         # Raw header message (msgid == "")
         self._header_raw: str = ""
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"messages={len(self._get_messages())},"
+            f"language={self.effective_language!r},"
+            f"nplurals={self.effective_nplurals},"
+            f"header={bool(self._get_header())}"
+            f")"
+        )
 
     # ----------------------------------------
     # Internal API for __messages
@@ -323,6 +336,225 @@ class Catalog:
         """
         Returns main language or None.
 
-        Does NOT invent a default ("C" や "en") — gettext compatible
+        Does NOT invent a default ("C" or "en") — gettext compatible
         """
         return self.languages[0] if self.languages else None
+
+    # ----------------------------------------
+    # Dict-like API (v0.2.0: singular only)
+    # ----------------------------------------
+    def __getitem__(self, key: str) -> str:
+        """
+        Dict-like lookup (gettext-compatible).
+
+        Behavior:
+            - If key == "":
+                return header msgstr
+            - If translation exists:
+                return translated singular form
+            - Otherwise:
+                return key itself
+
+        Notes:
+            - Never raises KeyError (gettext compatible)
+            - Plural forms are NOT handled here (v0.2.0)
+        """
+        if not isinstance(key, str):
+            raise TypeError("Catalog keys must be str")
+
+        # Header access
+        if key == "":
+            return self.header_msgstr()
+
+        message = self._get_message(key)
+        if message is None:
+            return key
+
+        # No plural translations → singular
+        if not message.translations:
+            return message.singular
+
+        return message.translations.get(0, message.singular)
+
+    def __setitem__(self, key: str, value: str) -> None:
+        """
+        Dict-like assignment (singular only).
+
+        Examples:
+            catalog["hello"] = "こんにちは"
+            catalog[""] = "Project-Id-Version: Demo\\nLanguage: ja\\n"
+
+        Notes:
+            - Plural forms are NOT supported here (v0.2.0).
+            - Header (msgid == "") is allowed and overwrites existing header.
+        """
+        if not isinstance(key, str):
+            raise TypeError("Catalog keys must be str")
+
+        if not isinstance(value, str):
+            raise TypeError("Catalog values must be str")
+
+        message = CatalogMessage.from_singular(msgid=key, msgstr=value)
+        self._set_message(message)
+
+    def __contains__(self, key: object) -> bool:
+        """
+        Dict-like membership test (gettext-compatible).
+
+        Behavior:
+            - key == "" -> True (header exists)
+            - key is not str -> False
+            - msgid exists in catalog -> True
+            - otherwise -> False
+        """
+        if not isinstance(key, str):
+            return False
+
+        # Header always considered present
+        if key == "":
+            return bool(self._get_header())
+
+        return bool(self._get_message(key) is not None)
+
+    def __iter__(self) -> Iterator[str]:
+        """
+        Return an iterator over message ids (keys).
+
+        Synonym for keys().
+        """
+        return iter(self._get_messages())
+
+    def keys(self) -> KeysView[str]:
+        """
+        Return a view over message ids (including header with key "")
+        """
+        return self._get_messages().keys()
+
+    def values(self) -> ValuesView[CatalogMessage]:
+        """
+        Return a view over CatalogMessage objects (including header)
+        """
+        return self._get_messages().values()
+
+    def items(self) -> ItemsView[str, CatalogMessage]:
+        """
+        Return a view over (msgid, CatalogMessage) pairs (including header)
+        """
+        return self._get_messages().items()
+
+    def __len__(self) -> int:
+        """
+        Return the number of messages (including header)
+        """
+        return len(self._get_messages())
+
+    # fmt: off
+    @overload
+    def get(self, key: str) -> CatalogMessage | str:
+        ...
+
+    @overload
+    def get(self, key: str, default: _T) -> CatalogMessage | _T:
+        ...
+    # fmt: on
+
+    def get(
+        self,
+        key: str,
+        default: object = _MISSING,
+    ) -> CatalogMessage | _T | str:
+        """
+        Return message for key if present, else fallback.
+
+        Behavior:
+            - If key exists:
+                return CatalogMessage
+            - If key does not exist and default is provided:
+                return default
+            - If key does not exist and default is NOT provided:
+                returns key itself (gettext-compatible fallback)
+
+        Note:
+            Catalog.get() differs from dict.get() behavior.
+            When default is not provided, missing keys fallback to msgid
+            for gettext compatibility.
+        """
+        if not isinstance(key, str):
+            raise TypeError("Catalog keys must be str")
+
+        message = self._get_message(key)
+        if message is not None:
+            return message
+
+        if default is _MISSING:
+            return key
+
+        return cast(_T, default)
+
+    def copy(self) -> Catalog:
+        """
+        Return a shallow copy of this Catalog.
+
+        Notes:
+        - CatalogMessage objects are shared.
+        - Internal dict/list containers are copied.
+        """
+        new = Catalog(
+            domain=self.domain,
+            localedir=self.localedir,
+            languages=list(self.languages),
+        )
+
+        # messages (shadow copy)
+        new._set_messages(self._get_messages().copy())
+
+        # header + plural info
+        new._header_raw = self._header_raw
+        new.plural_rule = self.plural_rule
+        new.nplurals = self.nplurals
+
+        return new
+
+    def update(
+        self,
+        other: Catalog | Mapping[str, CatalogMessage],
+    ) -> None:
+        """
+        Update catalog messages from another mapping or iterable.
+
+        Dict-like API (gettext-compatible):
+
+            catalog.update(other)
+
+        Behavior:
+            - Keys must be str
+            - Values must be CatalogMessage
+            - Existing keys are overwritten
+            - Header (msgid == "") is allowed and updates header state
+
+        Note:
+            Mapping[str, CatalogMessage] is assumed when isinstance(other, Mapping).
+        """
+        # Case 1: Catalog
+        if isinstance(other, Catalog):
+            for _, message in other.items():
+                self._set_message(message)
+            return
+
+        # Case 2: Mapping[str, CatalogMessage]
+        if isinstance(other, Mapping):
+            for key, message in other.items():
+                if not isinstance(key, str):
+                    raise TypeError("Catalog keys must be str")
+                if not isinstance(message, CatalogMessage):
+                    raise TypeError("Catalog values must be CatalogMessage")
+                # Delegate to internal setter (handles headar correctly)
+                self._set_message(message)
+            return
+
+        raise TypeError(
+            "Catalog.update() expects Catalog or Mapping[str, CatalogMessage]"
+        )
+
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("Catalog does not support item deletion")
