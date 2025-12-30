@@ -37,3 +37,6 @@ src/test*.py
 .coverage.*
 coverage.xml
 htmlcov/
+
+# Obsidian
+.Obsidian

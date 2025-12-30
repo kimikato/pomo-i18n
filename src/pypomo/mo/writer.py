@@ -27,43 +27,7 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
     # ----------------------------------------
     # Use catalog.header_msgstr() if available (raw PO header)
     # Otherwise build a minimal fallback header.
-    header_lines: List[str] = []
-
-    header: str = catalog.header_msgstr()  # always a str
-    if not header:
-        # No header found — create a minimal valid gettext header
-        header_lines = [
-            "Project-Id-Version: PACKAGE VERSION",
-            "Report-Msgid-Bugs-To: ",
-            "POT-Creation-Date: ",
-            "PO-Revision-Date: ",
-            "Last-Translator: ",
-            "Language-Team: ",
-            "MIME-Version: 1.0",
-            "Content-Type: text/plain; charset=UTF-8",
-            "Content-Transfer-Encoding: 8bit",
-        ]
-
-        # Language (if known)
-        if catalog.languages:
-            header_lines.append(f"Language: {catalog.languages[0]}")
-
-        # Plural-Forms fallback
-        npl = catalog.nplurals if catalog.nplurals is not None else 2
-        if npl == 1:
-            plural_expr = "0"
-        elif npl == 2:
-            plural_expr = "(n != 1)"
-        else:
-            # fallback for languages with 3+ plural forms
-            plural_expr = "(n != 1)"  # safe-ish default
-
-        header_lines.append(
-            f"Plural-Forms: nplurals={npl}; plural={plural_expr};"
-        )
-
-        header = "\n".join(header_lines)
-
+    header: str = _build_header(catalog)
     result[""] = header
 
     # ----------------------------------------
@@ -107,6 +71,63 @@ def _build_message_map(catalog: Catalog) -> Dict[str, str]:
         result[msgid] = msgstr
 
     return result
+
+
+def _build_header(catalog: Catalog) -> str:
+    """
+    Build a gettext-compatible header string.
+
+    Rules:
+        - If catalog.header_msgstr() exists → return it as-is (normalized).
+        - Otherwise → generate a minimal valid gettext header.
+        - Ensure every header line ends with "\n".
+        - Ensure required gettext fields exist.
+    """
+    lines: list[str] = []
+
+    # ----------------------------------------
+    # 1) Use explicit header from PO if present
+    # ----------------------------------------
+    raw = catalog.header_msgstr().strip()
+
+    if raw:
+        # Normalize newlines: ensure final newline and LF-only
+        lines = [line.rstrip("\r") for line in raw.split("\n")]
+        return "\n".join(lines) + "\n"
+
+    # ----------------------------------------
+    # 2) PO didn't contain a header - build a minimal valid gettext header
+    # ----------------------------------------
+    lines = [
+        "Project-Id-Version: PACKAGE VERSION",
+        "Report-Msgid-Bugs-To: ",
+        "POT-Creation-Date: ",
+        "PO-Revision-Date: ",
+        "Last-Translator: ",
+        "Language-Team: ",
+        "MIME-Version: 1.0",
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: 8bit",
+    ]
+
+    # Languages
+    if catalog.effective_language:
+        lines.append(f"Language: {catalog.effective_language}")
+
+    # Plural-Forms
+    npl = catalog.nplurals if catalog.nplurals is not None else 2
+
+    if npl == 1:
+        plural_expr = "0"
+    elif npl == 2:
+        plural_expr = "(n != 1)"
+    else:
+        plural_expr = "(n != 1)"  # safe default (matches gettext fallback)
+
+    lines.append(f"Plural-Forms: nplurals={npl}; plural={plural_expr};")
+
+    # Normalize final formatting
+    return "\n".join(lines) + "\n"
 
 
 def write_mo(path: str | Path, catalog: Catalog) -> None:
