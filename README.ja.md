@@ -8,345 +8,926 @@
 [![Python](https://img.shields.io/pypi/pyversions/pomo-i18n.svg)](https://pypi.org/project/pomo-i18n/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-`pomo-i18n` は Python 向けのシンプルで厳密型付け（strict typing）な gettext 互換の国際化ライブラリです。
+**pomo-i18n** は、GNU gettext 翻訳データを扱うための軽量な Python ライブラリです。
+実用的で明示的な `Catalog` モデルを中心に設計されています。
 
-`.po` と `.mo` ファイルを自前でパースし、外部依存なしで `gettext()` / `ngettext()` を使用できるようにします。
+バージョン 0.2.0 では、**gettext 互換** かつ **インメモリ** な翻訳カタログを提供し、**dict-like API** を通じて、従来の gettext ワークフロー (`.po`, `.mo`, `gettext()`, `ngettext()`)との互換性を保ちます。
 
 ---
 
-## 特長
+## 概要
 
-- ✔ `.po` ファイル、 `.mo` ファイルをパース（ gettext 形式）
-- ✔ 複数形ルール（`Plural-Forms:`） を解析し、複雑な複数形ルールに対応
-- ✔ mypy / Pylance 完全対応（ strict モード）
-- ✔ gettext 互換 API `gettext` / `ngettext` / `translation`
-- ✔ OS 依存なし（libintl 不要）
-- ✔ Linux / macOS / Windows で動作
+`pomo-i18n` は、以下のような開発者を対象に設計されています。
 
-CLI ツールや API サーバ、バッチ処理など
-Python プロジェクトへの組み込みを想定しています。
+- グローバル状態に依存せずに、 gettext 翻訳データを扱いたい
+- 翻訳を **明示的な Python オブジェクト** として管理したい
+- gettext 互換の挙動を保ちつつ、Python らしい API を使いたい
+
+本ライブラリの中核となるのが `Catalog` クラスです。
+`Catalog` は gettext メッセージカタログを **インメモリで表現** します。
+
+`Catalog` は次の特徴を持ちます。
+
+- `msgid` をキーとしてメッセージを管理
+- ヘッダ (`msgid == ""`) をファーストクラスデータとして扱う
+- gettext セマンティクスに準拠した dict-like API
+- 複数形ルールの解析・評価・キャッシュのサポート
+- `.po` / `.mo` ファイルからの読み込み、および `.mo` への書き出しが可能
+
+標準の `gettext` モジュールと異なり、`pomo-i18n` は
+モジュールレベルのグローバル状態に翻訳データを隠しません。
+
+すべての翻訳データは明示的な `Catalog` インスタンスとして保持されるため、
+挙動は予測可能で、テストしやすく、合成可能です。
+
+---
+
+## 対象外・スコープ
+
+`pomo-i18n` は **明示的なインメモリ gettext カタログ** にフォーカスしています。
+
+以下の機能は意図的に提供しません。
+
+- グローバルな翻訳状態
+- 自動的な言語切り替え
+- フレームワーク固有の統合 (Django, Flask など)
+
+これらは `Catalog` を基盤として、上位レイヤで構築されることを想定します。
+
+---
+
+## gettext 互換性
+
+`pomo-i18n` は、重要な点において **GNU gettext と互換の挙動**を目指しています。
+
+- 翻訳が存在しない場合は、`msgid` にフォールバック
+- ヘッダの扱いは gettext の仕様に準拠
+- `gettext()` / `ngettext()` API を提供
+- 複数形ルールは gettext 仕様に基づいて評価
+
+同時に、これらの概念を **明確なオブジェクトモデル** として公開することで、
+翻訳データを直接検査・操作できるようにしています。
 
 ---
 
 ## インストール
 
-```sh
+```bash
 pip install pomo-i18n
 ```
 
-もしくは `src/` 内に同梱して使用することもできます。
+要件:
 
-```
-src/
- └─ pypomo/
-```
+- Python 3.10 以上
 
----
+### GNU gettext 依存について
 
-## ドキュメント
+`pomo-i18n` は実行時に GNU gettext を必要としません。
+必要なのは Python のみです。
 
-より詳細な技術仕様（API リファレンス / ベンチマーク結果）は英語版ドキュメントをご覧ください。
+`.mo` ファイルの読み込み、複数形ルールの評価、
+`gettext()` / `ngettext()` の実行はすべて Python だけで完結します。
 
-- [API リファレンス](docs/api.md) （英語版）
-- [ベンチマーク結果](docs/benchmarks.md) （英語版）
+そのため、GNU gettext ツールチェインを導入しづらい Windows 環境でも
+問題なく利用できます。
+
+`.po` ファイルは現在インポート形式としてサポートしています。
+`.po` → `.mo` の完全な変換サポートは、将来のバージョンで予定されています。
 
 ---
 
 ## クイックスタート
 
-```python
-from pypomo.gettext import translation
+`pomo-i18n` の中心となるオブジェクトは `Catalog` です。
 
-t = translation(
-    domain="messages",
-    localedir="locales",
-    languages=["ja"],
+`Catalog` は gettext メッセージカタログをインメモリで表現し、
+Python の辞書に近い感覚で扱うことができます。
+
+---
+
+### `Catalog` を作成する
+
+```python
+from pypomo.catalog import Catalog
+
+catalog = Catalog()
+```
+
+---
+
+### dict-like API の基本
+
+辞書と同様の構文で翻訳を登録・取得できます。
+
+```python
+catalog["hello"] = "こんにちは"
+
+print(catalog["hello"])
+# -> "こんにちは"
+```
+
+翻訳が存在しない場合は、`msgid` 自体が返されます。(gettext 互換の挙動です)
+
+```python
+print(catalog["missing"])
+# -> "missing"
+```
+
+---
+
+### ヘッダの扱い (`msgid == ""`)
+
+gettext のヘッダはファーストクラスデータとして扱われます。
+
+```python
+catalog[""] = (
+    "Language: ja\n"
+    "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 )
-
-_ = t.gettext
-
-print(_("Hello"))                     # -> 「こんにちは」等
-print(t.ngettext("apple", "apples", 1))   # -> 「りんご」
-print(t.ngettext("apple", "apples", 3))   # -> 「りんご」(日本語は単数のみ)
 ```
 
-フォルダ構成例：
-
-```
-locales/
- └─ ja/
-     └─ LC_MESSAGES/
-         └─ messages.po
-```
+ヘッダに含まれる Plural-Forms は自動的に解析され、複数形評価に使用されます。
 
 ---
 
-## `.po` の解析
+### get() を使った取得
 
-`pomo-i18n` の POParser は、 gettext の基本要素をサポートします：
-
-- `msgid` / `msgstr`
-- 複数形：`msgid_plural` / `msgstr[n]`
-- 複数行文字列
-- gettext のコメント形式に対応：
-  - `#`（翻訳者コメント）
-  - `#.`（抽出コメント）
-  - `#:`（参照コメント）
-  - `#, flags`（通常コメントとして処理。`fuzzy` の特別扱いは未対応）
-- ヘッダー（`msgid ""`）の解析 -> ここから 複数形ルール（`Plural-Forms:`）を抽出
-
----
-
-## 複数形ルール（Plural Forms）
-
-`.po` には次のような行が含まれます：
+`Catalog.get()` は `dict.get()` に似た挙動をしますが、
+gettext 互換のフォールバックを持ちます。
 
 ```python
+catalog.get("hello")
+# -> CatalogMessage
+
+catalog.get("missing")
+# -> "missing"
+
+catalog.get("missing", "fallback")
+# -> "fallback"
+```
+
+- キーが存在する場合は `CatalogMessage` を返します
+- キーが存在しない場合は `default` または、`msgid` を返します
+
+---
+
+### gettext / ngettext API
+
+`Catalog` は gettext 互換の API を提供します。
+
+```python
+catalog.gettext("hello")
+# -> "こんにちは"
+
+catalog.ngettext("apple", "apples", 1)
+# -> "apple"
+
+catalog.ngettext("apple", "apples", 2)
+# -> "apples"
+```
+
+- `gettext()` は単数形の取得に使用されます
+- `ngettext()` は複数形ルールに基づいて翻訳を選択します
+
+---
+
+### `.po` / `.mo` の読み込みと書き出し
+
+`Catalog` は `.po` および `.mo` ファイルから生成でき、
+`.mo` ファイルとして書き出すことができます。
+
+```python
+from pypomo.mo.loader import load_mo
+from pypomo.mo.writer import write_mo
+
+catalog = load_mo("messages.mo")
+write_mo("messages_out.mo", catalog)
+```
+
+`.mo` ファイルは実行時の利用に推奨される形式です。
+詳細は後続のセクションを参照してください。
+
+---
+
+## 設計思想：なぜ `Catalog` なのか？
+
+`pomo-i18n` の設計は、次の 1 つの原則に基づいています。
+
+**GNU gettext 互換性を保ちつつ、隠れたグローバル状態を排除する**
+
+### 標準 gettext モジュールの課題
+
+Python 標準の gettext モジュールは強力ですが、
+現代的な Python アプリケーションにおいてはいくつかの課題があります。
+
+- 翻訳状態がモジュールレベルのグローバル状態として管理される
+- 使用中の言語やドメインが暗黙的になりやすい
+- テスト時にグローバル状態の差し替えが必要になる
+- 翻訳データの中身を直接確認・操作しづらい
+
+これらは次のようなケースで問題になります。
+
+- 明示的な依存関係を重視する設計
+- 複数の翻訳カタログを同時に扱う必要がある場合
+- 再現性・テスト容易性が重要な環境
+
+---
+
+### 明示的な翻訳オブジェクトとしての `Catalog`
+
+`pomo-i18n` は、これらの課題に対し、翻訳状態をすべて明示的なオブジェクトとして扱うという方針を取ります。
+
+`Catalog` は次のような存在です。
+
+- 実体を持つ、検査可能な Python オブジェクト
+- gettext メッセージカタログのインメモリ表現
+- 以下の情報を一元的に保持する単一の情報源：
+  - メッセージ定義
+  - ヘッダ情報
+  - 複数形ルール
+  - 言語情報
+
+つまり、
+
+_「現在の翻訳は何か？」_
+_ではなく、_
+_「この `Catalog` インスタンスの翻訳は何か？」_
+
+という問い方をします。
+
+```python
+catalog = Catalog()
+catalog["hello"] = "こんにちは"
+```
+
+---
+
+### gettext 互換の dict-like API
+
+`Catalog` のもう一つの重要な設計目標は、
+
+**Python 的に自然でありながら、gettext の挙動を壊さない**
+
+ことです。
+
+そのため、`Catalog` は辞書に似た API を持ちますが、単なる Dict ではありません。
+
+- 存在しないキーは `KeyError` を出さずに、 `msgid` を返す
+- ヘッダ (`msgid == "") は特別扱いではなく通常のエントリ
+- 複数形の挙動は `Plural-Forms` に従う
+
+```python
+catalog["missing"]
+# -> "missing"
+```
+
+---
+
+### 責務の分離
+
+`pomo-i18n` は明確な責務分離を行っています。
+
+- `Catalog`
+  - 実行時の翻訳データと挙動を管理
+- `CatalogMessage`
+  - 1 つの翻訳エントリを表す正規化されたデータ構造
+- `.po` / `.mo` ローダ・ライタ
+  - ファイル形式の入出力のみを担当
+
+ファイル形式 (`.po`, `.mo`) は永続化・交換のための層であり、実行時の挙動を支配しません。
+
+この構造により、
+
+- 内部実装の整理
+- 将来的なリファクタリング
+- マージ戦略や拡張 API の追加
+
+が容易になります。
+
+---
+
+### 暗黙的な挙動に頼らない設計
+
+`pomo-i18n` は、便利さのために挙動を隠すことはしません。
+
+- 自動的な言語切り替えは行わない
+- グローバルな翻訳レジストリを持たない
+- フレームワーク固有の挙動を内包しない
+
+代わりに、
+
+- 明示的
+- 組み合わせ可能
+- テストしやすい
+
+ビルディングブロックを提供します。
+
+---
+
+### まとめ
+
+`pomo-i18n` の設計思想を要約すると次の通りです。
+
+- gettext の互換性は維持する
+- グローバル状態は排除する
+- 翻訳データを明示的なオブジェクトとして扱う
+- Python らしさと可読性を優先させる
+- 将来の拡張を前提にした設計を行う
+
+この思想は `Catalog` を起点として、すべての API に一貫して反映されています。
+
+---
+
+## dict-like API 詳細 (v0.2.0)
+
+`Catalog` は辞書ライクな API を提供しますが、その挙動は通常の Dict とは異なり、gettext 互換のセマンティクスに基づいています。
+
+この API は、`pomo-i18n` v0.2.0 における主要な利用インターフェースです。
+
+---
+
+### `catalog[key]` --- 翻訳の参照
+
+```python
+catalog["hello"]
+```
+
+挙動:
+
+| 条件                | 結果                         |
+| ------------------- | ---------------------------- |
+| `key` が存在する    | 翻訳された単数形文字列を返す |
+| `key` が存在しない  | `key` 自体を返す             |
+| `key == ""`         | ヘッダーの `msgstr` を返す   |
+| `key` が `str` 以外 | `TypeError`                  |
+
+例:
+
+```python
+catalog["hello"] = "こんにちは"
+
+catalog["hello"]    # -> "こんにちは"
+catalog["missing"]  # -> "missing"
+catalog[""]         # -> ヘッダー文字列
+```
+
+補足:
+
+- `KeyError` は決して送出されない
+- gettext のフォールバック挙動と完全互換
+- 複数形はここでは扱わない (v0.2.0 の仕様)
+
+---
+
+### `catalog[key] = value` --- 翻訳の代入
+
+```python
+catalog["hello"] = "こんにちは"
+```
+
+挙動:
+
+- `key` は `str` でなければならない
+- `value` は `str` でなければならない
+- 単数形の翻訳を作成、または、上書きする
+- `key == ""` の場合はヘッダーを更新する
+
+例:
+
+```python
+catalog[""] = "Language: ja\nPlural-Forms: nplurals=2; plural=(n != 1);\n"
+```
+
+補足:
+
+- 複数形の代入は **意図的にサポートしていない** (v0.2.0)
+- ヘッダ更新時、`Plural-Forms` は自動的に解析される
+
+---
+
+### `"key" in catalog` --- メンバーシップ判定
+
+```python
+"hello" in catalog
+```
+
+挙動:
+
+| 条件              | 結果                    |
+| ----------------- | ----------------------- |
+| 翻訳が存在する    | `True`                  |
+| 翻訳が存在しない  | `False`                 |
+| `key == ""`       | ヘッダーがあれば `True` |
+| key が `str` 以外 | `False`                 |
+
+例:
+
+```python
+"hello" in catalog
+"" in catalog
+```
+
+---
+
+### イテレーションとビュー
+
+```python
+for key in catalog
+```
+
+これは次と等価です
+
+```python
+catalog.keys()
+```
+
+利用可能なビュー:
+
+```python
+catalog.keys()    # KeyView[str]
+catalog.values()  # ValueView[CatalogMessage]
+catalog.items()   # ItemsView[tuple[str, CatalogMessage]]
+len(catalog)      # エントリー数(ヘッダーを含む)
+```
+
+※ これらはすべて内部構造を隠さない明示的 API です。
+
+---
+
+### `catalog.get(key[, default])`
+
+```python
+catalog.get("hello")
+catalog.get("hello", default)
+```
+
+挙動(gettext 互換):
+
+| 条件                              | 結果             |
+| --------------------------------- | ---------------- |
+| `key`が存在する                   | `CatalogMessage` |
+| `Key`が存在しない + `default`指定 | `default`        |
+| `key`が存在しない + `default`無し | `key`を返す      |
+| `key`が`str`以外                  | `TypeError`      |
+
+例:
+
+```python
+catalog.get("hello")
+# -> CatalogMessage
+catalog.get("missing")
+# -> "missing"
+catalog.get("missing", "fallback")
+# -> "fallback"
+```
+
+補足:
+
+- `dict.get()` と異なり、`default` 未指定の場合、`None`ではなく`key`を返す
+- gettext のフォールバック挙動を再現するための設計
+
+---
+
+### 削除はサポートされない
+
+```python
+del catalog["hello"]
+```
+
+常に:
+
+```python
+TypeError
+```
+
+理由
+
+- gettext カタログは「追記・上書き」志向の構造
+- 暗黙的な状態変化を防ぐため、削除 API は提供しない
+
+---
+
+### 設計上の意図
+
+- `KeyError` を送出しない --- gettext 互換
+- ヘッダーを特別扱いしない --- 一貫したモデル
+- 単数形ファースト --- 複数形は明示 API (v0.3.0 予定)
+
+---
+
+### まとめ
+
+dict-like API は次の性質を持つ:
+
+- Python 開発者にとって直感的
+- gettext 挙動と互換
+- 暗黙的な挙動に頼らない
+- 拡張可能な設計の基盤
+
+この API が、`gettext()` / `ngettext()` など高レベル API の基礎となっている。
+
+---
+
+## gettext / ngettext API
+
+`Catalog` は、dict-like API に加えて GNU gettext 互換の翻訳 API を提供する。
+
+これらの API は、既存の gettext ベースのコードから違和感なく移行できることを目的として設計されている。
+
+---
+
+### `gettext()`
+
+```python
+catalog.gettext("hello")
+# -> "こんにちは"
+```
+
+挙動:
+
+| 状況                    | 結果                   |
+| ----------------------- | ---------------------- |
+| 翻訳が存在する          | 翻訳された文字列       |
+| 翻訳が存在しない        | 元の `msgid` を返す    |
+| `msgid == ""`(ヘッダー) | gettext() では取得不可 |
+
+これは GNU gettext の `gettext()` と同等の挙動です。
+
+補足:
+
+- 戻り値は常に文字列(`str`)
+- `CatalogMessage`オブジェクトは返さない
+- `dict-like API` よりも利用側に近い高レベル API
+
+---
+
+### `ngettext()`
+
+```python
+catalog.ngettext("apple", "apples", 1)
+# -> "apple"
+
+catalog.ngettext("apple", "apples", 2)
+# -> "apples"
+```
+
+`ngettext()` は、数量 n に応じて適切な複数形翻訳を返すための API です。
+
+挙動の流れ
+
+| 手順 | 条件                                  | 結果                                           |
+| ---- | ------------------------------------- | ---------------------------------------------- |
+| 1    | 翻訳が存在しない                      | `n == 1` なら `singular`、 それ以外は `plural` |
+| 2    | 翻訳が存在する                        | `Plural-Forms`ルールでインデックスを計算       |
+| 3    | 対応する `msgstr[index]` が存在する   | その翻訳を返す                                 |
+| 4    | index が範囲外だが `msgstr[0]` がある | `msgstr[0]` にフォールバック                   |
+| 5    | 有効な翻訳が見つからない              | 翻訳済み単数形にフォールバック                 |
+| 6    | 最終手段                              | 元の plural 引数を返す                         |
+
+この処理順は GNU gettext の仕様に準拠している。
+
+---
+
+### 複数形ルール (`Plural-Forms`)
+
+複数形の選択は、カタログヘッダー内の `Plural-Forms` フィールドに基づいて行われる。
+
+例:
+
+```text
 Plural-Forms: nplurals=2; plural=(n != 1);
 ```
 
-ロシア語の例：
+挙動:
 
-```python
-Plural-Forms: nplurals=3;
- plural=(n%10==1 && n%100!=11 ? 0 :
-        n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);
-```
+| 状況                             | 内容                                 |
+| -------------------------------- | ------------------------------------ |
+| ヘッダーに `Plural-Forms` がある | ルールを解析・コンパイル・キャッシュ |
+| ヘッダーに存在しない             | gettext 互換のデフォルトルールを使用 |
+| デフォルトルール                 | `nplurals=2; plural=(n != 1);`       |
 
-`pomo-i18n` は C 風構文（ `&&` / `||` / `? :` ）を Python 構文に変換し、制限付き `eval()` で安全に評価します。
+- ルールは初回のみ解析され、以降はキャッシュされる
+- 実行時オーバーヘッドは最小限に抑えられている
 
 ---
 
-## API リファレンス
+### dict-like API との関係
 
-### Catalog
+| API              | 目的                                  |
+| ---------------- | ------------------------------------- |
+| `catalog["key"]` | 単数形の簡易アクセス                  |
+| `catalog.get()`  | メッセージオブジェクトの取得          |
+| `gettext()`      | gettext 互換の文字列取得              |
+| `ngettext()`     | 複数形対応の gettext 互換の文字列取得 |
+
+v0.2.0 において:
+
+- dict-like API は単数形中心
+- 複数形は `ngettext()` によって明示的に扱う
+
+---
+
+### 設計上の意図
+
+- gettext 互換の挙動を維持する
+- 文字列 API とオブジェクト API を明確に分離する
+- 暗黙的な状態やグローバル依存を持ち込まない
+- 将来の dict-like 複数形拡張 (v0.3.0 以降) に備える
+
+---
+
+### 将来の拡張予定
+
+| バージョン | 予定内容                          |
+| ---------- | --------------------------------- |
+| v0.3.x     | dict-like な複数形アクセス        |
+| v0.3.x+    | `CatalogMessage` とのより蜜な統合 |
+
+それまでは、`ngettext()` が複数形翻訳の正規 API となる。
+
+---
+
+## CatalogMessage の設計
+
+`CatalogMessage` は、`Catalog` 内部で使用されるメッセージ単位の内部表現です。
+
+これは、gettext における 1 つの翻訳エントリ (`msgid`, `msgstr`, `msgid_plural`, `msgstr[n]`) に対応していますが、Python で扱いやすい、イミュータブル指向の構造へ正規化されています。
+
+---
+
+### 目的
+
+`CatalogMessage` は、以下の目的のために存在します。
+
+- **完全に解決された翻訳単位**を表現
+- 解析用モデル (`POEntry`) と実行時の参照処理を分離
+- 次の処理のための安定したオブジェクトモデルを提供
+  - dict-like なアクセス
+  - `gettext()` / `ngettext()` の評価
+  - `.mo` ファイルへの書き出し
+
+`POEntry` とは異なり、`CatalogMessage` は**ファイル形式のモデルではなく**、_「実行時に翻訳がどのように振る舞うか」を表す_ ためのモデルです。
+
+---
+
+### 構造
 
 ```python
+@dataclass(slots=True)
+class CatalogMessage:
+    msgid: str
+    singular: str
+    plural: str | None
+    translations: Dict[int, str]
+```
+
+各フィールドの意味
+
+| フィールド     | 内容                                       |
+| -------------- | ------------------------------------------ |
+| `msgid`        | 論理キーとなる元の未翻訳文字列             |
+| `singular`     | 単数形の翻訳 (必ず存在します)              |
+| `plural`       | 複数形の `msgid` (存在しない場合は `None`) |
+| `translations` | {複数形インデックス: 翻訳文字列}           |
+
+---
+
+### 正規化ルール
+
+`CatalogMessage` は、`__post_init__` 内でいくつかの不変条件を強制します。
+
+- `singular` は **非空**
+  - 空の場合: `msgid` をフォールバック
+- `plural == ""`は `None` で正規化
+- `translations[0]` は**必ず存在**
+  - 存在しない場合: `singular` をフォールバック
+- 複数形の翻訳が空の場合: 保守的にフォールバック
+  - index `0`: `singular` をフォールバック
+  - index `n`: `singular` または `plural` をフォールバック
+
+これにより、次のことが保証されます。
+
+- 参照側で防御的なチェックを書く必要がない
+- 複数形が欠けていても安全に動作する
+- `.mo`書き出しでは一貫性のあるデータが想定できる
+
+---
+
+### 生成用ヘルパー
+
+通常、`CatalogMessage` を直接生成する必要はありませんが、明示的な生成用ヘルパーも用意されています。
+
+単数形メッセージ
+
+```python
+CatalogMessage.from_singular(
+    msgid="hello",
+    msgstr="こんにちは",
+)
+```
+
+主に以下で使用されます。
+
+- `catalog["key"] = value`
+- 複数形を持たないシンプルなカタログ
+
+---
+
+### 複数形メッセージ
+
+```python
+CatalogMessage.from_plural(
+    msgid="apple",
+    msgid_plural="apples",
+    forms={
+        0: "りんご",
+        1: "りんごたち",
+    }
+)
+```
+
+これは主に、以下の内部処理で使用されます。
+
+- `.po` ファイルからの読み込み
+- `.mo` ローダー内部
+
+不足している forms は、自動的に正規化されます。
+
+---
+
+### アクセス用ヘルパー
+
+```python
+msg.as_plain()
+```
+
+単数形の翻訳 (`translations[0]`) を返します。
+
+```python
+msg_get_plural(index)
+```
+
+フォールバックを伴い安全に複数形を取得します。
+これらは主に次の箇所で使用されます。
+
+- `Catalog.__getitem__`
+- `Catalog.ngettext()`
+- `.mo` writer
+
+---
+
+### イミュータブル指向の設計
+
+`CatalogMessage` は、設計上はイミュータブルに近い扱いです。
+
+- `@dataclass(slot=True)`を使われている
+- 公開された変更 API はありません
+- `Catalog` 内部では「差し替え」として扱っています
+
+これにより、次のような性質が得られます。
+
+- カタログ間での安全な再利用
+- 予測可能なマージ / 更新セマンティックス
+- 効率のよいキャッシュと複数形評価
+
+---
+
+### 他レイヤーとの関係
+
+| レイヤー         | 役割                       |
+| ---------------- | -------------------------- |
+| `POEntry`<br>    | `.po` ファイル解析用モデル |
+| `CatalogMessage` | 実行時の翻訳表現           |
+| `Catalog`        | 検索・複数形評価・API 表面 |
+
+この分離は意図的な設計です。
+
+- 解析用モデル (`POEntry`) は将来変更される可能性があります。
+- 実行時の動作 (`CatalogMessage`) は安定しています。
+
+という理由から、責務を明確に分けています。
+
+---
+
+### バージョンに関する注意
+
+- v0.2.0 では、単数形中心の利用が前提です。
+- dict-like な複数形代入は、v0.3.0 以降を予定しています。
+- `CatalogMessage` 自体は、既に完全な複数形データを保持できます。
+
+---
+
+## 翻訳ファイルの読み込みと書き出し (`.po` / `.mo`)
+
+`pomo-i18n`では、`.po` や `.mo` といったファイル形式を `Catalog` を中心とする抽象化を**シリアライズ層**として扱います。
+
+v0.2.0 では、
+
+- `.mo` ファイル: 実行時の主要フォーマット
+- `.po` ファイル: インポート用フォーマット
+
+という位置付けになっています。
+
+---
+
+### `.po` ファイルの読み込み
+
+テキスト形式の `.po` ファイルは、`POParser` を使って解析し、その結果を `Catalog` に変換します。
+
+```python
+from pypomo.parser.po_parser import POParser
 from pypomo.catalog import Catalog
-```
 
-| メソッド                        | 説明                      |
-| ------------------------------- | ------------------------- |
-| `gettext(msgid)`                | 単純翻訳                  |
-| `ngettext(singular, plural, n)` | 複数形に対応した翻訳      |
-| `merge(other)`                  | 他の Catalog をマージする |
-| `header_msgstr()`               | ヘッダーを返す            |
-
----
-
-### トップレベル API
-
-```python
-from pypomo.gettext import gettext, ngettext, translation
-```
-
-| 関数                                        | 説明                                                 |
-| ------------------------------------------- | ---------------------------------------------------- |
-| `gettext(msgid)`                            | デフォルトカタログでの翻訳                           |
-| `ngettext(singular, plural, n)`             | 複数形を考慮した翻訳                                 |
-| `translation(domain, localedir, languages)` | 特定の `.po` ファイルを読み込んで新規 Catalog を返す |
-
----
-
-## `.mo` ファイルの書き出し
-
-`pomo-i18n` には GNU gettext 互換の `.mo` バイナリを書き出すための `write_mo()` 関数が含まれています。
-`Catalog` インスタンスを `.mo` ファイルに変換できます。
-
-### 例： Catalog を `.mo` ファイルとして出力する
-
-```python
-from pypomo.catalog import Catalog
-from pypomo.mo.writer import write_mo
-from pypomo.parser.types import POEntry
-
-entries = [
-    POEntry(
-        msgid="",
-        msgstr=(
-            "Language: ja\n"
-            "Content-Type: text/plain; charset=UTF-8\n"
-            "Plural-Forms: nplurals=1; plural=0;\n"
-        ),
-        msgid_plural=None,
-        msgstr_plural={},
-        comments=[],
-    ),
-    POEntry(
-        msgid="Hello",
-        msgstr="こんにちは",
-        msgid_plural=None,
-        msgstr_plural={},
-        comments=[],
-    ),
-]
+parser = POParser()
+entries = parser.parse("messages.po")
 
 catalog = Catalog.from_po_entries(entries)
-write_mo("messages.mo", catalog)
 ```
 
-### 出力した `.mo` の利用方法
+補足
 
-Python の標準 `gettext` でロードできます：
+- 現在の `.po` パーサーは、以下をサポートしています。
 
-```python
-import gettext
+  - `msgid`
+  - `msgstr`
+  - `msgid_plural`
+  - `msgstr[n]`
+  - 複数行文字列
+  - コメント
 
-with open("messages.mo", "rb") as f:
-    trans = gettext.GNUTranslations(f)
-
-print(trans.gettext("Hello"))  # -> 「こんにちは」
-```
-
-### 特長
-
-- GNU gettext の `.mo` フォーマットと互換
-- `msgid=""` がない場合でも自動でヘッダーを生成
-- 複数形（nplurals / 複数形判定式）に対応
-- 出力は UTF-8、追加依存なし
+- `#, fuzzy` やフラグのような高度な機能は**コメントとして保持**されますが、v0.2.0 では**意味的な解釈は行われません**。
+- `.po` ファイルは、あくまでもインポート用フォーマットとして扱われます。
 
 ---
 
-## `.mo` ファイルの読み込み
+### `.mo` ファイルの読み込み
 
-`pomo-i18n` には GNU gettext 互換の `.mo` バイナリファイルを `Catalog` に読み込むためのローダーが付属しています。
-
-### 例： `.mo` ファイルを `Catalog` として読み込む
+バイナリ形式の `.mo` ファイルは、直接 `Catalog` として読み込めます。
 
 ```python
 from pypomo.mo.loader import load_mo
 
-cat = load_mo("messages.mo")
-
-_ = cat.gettext
-
-print(_("Hello"))       # -> 「こんにちは」など
-print(cat.ngettext("apple", "apples", 3))
+catalog = load_mo("messages.mo")
 ```
 
-### 対応している内容
+この処理により、以下のことが自動的に行われます。
 
-- GNU gettext `.mo` バイナリ形式と互換
-- リトルエンディアンのマジックナンバー ( 0x9504120E ) を検証
-- `msgid ""` からヘッダー情報（`Plural-Forms:` など）を解析
-- 複数形ルール（Plural expression）の適切な処理
-- 以下のすべてを正しく読み込めます：
-  - 単数メッセージ
-  - 複数メッセージ（ `msgid "\x00"` で区切る）
-  - 複数形の各フォーム（ `msgstr[n]` 相当）
-
-### 動作の流れ
-
-`.mo` ローダーは次のように動作します：
-
-1. `read_mo_binary()`
-
-   バイナリヘッダーと文字列テーブルを読み取り、生の `msgid` / `msgstr` のバイト列を抽出します。
-
-2. `decode_map_pairs()`
-
-   バイト列を Python の構造へ変換します：
-
-   - `"single"`（単数）
-   - `"plural-header"`（複数形）
-
-3. `build_catalog_from_pairs()`
-
-   ペアから完全な `Catalog` を構築し、必要に応じて `Plural-Forms:` も設定します。
-
-### `.mo` を使うべきタイミング
-
-`.mo` バイナリを使う利点は以下です：
-
-- `.po` より 読み込みが高速（バイナリのため）
-- 本番環境へのデプロイで安定性が高い
-- `gettext` や `msgfmt` が生成した `.mo` と完全互換
-
-### `.po` でも `.mo` でも目的に応じて選択が可能
-
-- 編集しやすい： `.po`
-- 配布や読み込みが速い： `.mo`
-
-どちらも `pomo-i18n` は自然に扱えるので、目的に応じて `.po` / `.mo` を使い分けられます。
+- すべてのメッセージがメモリ上にロード
+- ヘッダ (`msgid == ""`) の解析
+- `Plural-Forms` の抽出・評価
+- 以下の API が即座に利用可能
+  - `catalog["msgid"]`
+  - `catalog.gettext()`
+  - `catalog.ngettext()`
 
 ---
 
-## ベンチマーク
+### `.mo` ファイルの書き出し
 
-2 種類のベンチマークがあります:
-
-### 1. Micro benchmark ( timeit )
-
-```bash
-make bench
-```
-
-### 2. pytest-benchmark
-
-```bash
-make bench-pytest
-```
-
-### 🏎 複数形評価 （ Plural Expression ） ベンチマーク
-
-複数形選択（ plural rule evaluation ）は gettext の内部処理で最も頻繁に実行されるため、
-キャッシュ方式によりパフォーマンスが大きく変わります。
-以下は実際のベンチマーク結果です。
-
-#### 計測環境
-
-- Python 3.10.19
-- macOS Tahoe 26.1 (Apple Silicon, M4)
-- pytest-benchmark 5.2.3
-- pypomo default settings
-
-#### キャッシュ方式ごとの比較結果
-
-| Backend  | Simple Rule ( µs ) | Complex Rule ( µs ) | コメント                               |
-| -------- | ------------------ | ------------------- | -------------------------------------- |
-| **none** | 約 2.54            | 約 4.83             | キャッシュなし。デバッグ向け。         |
-| **weak** | 約 2.69            | 約 4.89             | Python の dict による簡易キャッシュ。  |
-| **lru**  | 約 2.49            | 約 4.92             | もっとも高速（ CPython の LRU 実装）。 |
-
-#### まとめ
-
-- 本番利用では **`LRU` キャッシュを推奨**
-- `weak` は軽量キャッシュとして扱いやすい
-- `none` は比較実験やデバッグ用途に最適
-
-#### キャッシュ方式の切り替え方法
-
-環境変数でキャッシュ backend を切り替えできます：
-
-```bash
-# キャッシュ無効化（デバッグ向け）
-export PYPOMO_CACHE=none
-
-# dict ベースの簡易キャッシュ
-export PYPOMO_CACHE=weak
-
-# LRU キャッシュ（推奨）
-export PYPOMO_CACHE=lru
-
-# LRU サイズ変更（デフォルト: 256）
-export PYPOMO_PLURAL_CACHE_SIZE=512
-```
-
-プログラム中で切り替えることも可能です：
+`Catalog` の内容は、GNU gettext 互換の `.mo` ファイルとして書き出されます。
 
 ```python
-from pypomo.utils.cache_manager import get_default_cache
-cache = get_default_cache(backend="lru")
+from pypomo.mo.writer import write_mo
+
+write_mo("messages_out.mo", catalog)
 ```
+
+注意点
+
+- 出力される `.mo` ファイルは GNU gettext 完全互換です。
+- ヘッダおよび `Plural-Forms` は保持されます。
+- dict-like API を通じた変更内容も反映されます。
+- 実行時フォーマットとしては `.mo` ファイルの利用を推奨します。
 
 ---
 
-## 今後の予定
+### `.po` ファイルの書き出しについて
 
-- 複数言語のフォールバック対応
-- コメント（ `#, fuzzy`、`#.` など）の強化
-- `.pot` の自動生成ツール
-- CLI ツールの提供
+v0.2.0 では、`.po` ファイルの書き出しはサポートされていません。
+
+`.po` の生成やよりリッチなメタデータの処理へのサポートは今後のバージョンで予定しています。
+
+---
+
+### 設計上の考え方
+
+- `Catalog` は唯一の正 (**source of truth**)
+- `.po` / `.mo` は**シリアライズ層**
+- 隠れたグローバル状態はない
+- 明示的で、テストしやすく、構成可能な翻訳処理
+
+という方針を採用しています。
+
+---
+
+### 今後のロードマップ
+
+今後のバージョンでは、以下を予定しています。
+
+- `.po` モジュール構成のリファクタリング (`pypomo.po.*`)
+- `fuzzy` フラグなどの完全対応
+- `.po`ファイルの書き出し対応
+- より高度なマージ・アップデート戦略
 
 ---
 
@@ -354,5 +935,3 @@ cache = get_default_cache(backend="lru")
 
 MIT License
 © 2025 Kiminori Kato
-
----
